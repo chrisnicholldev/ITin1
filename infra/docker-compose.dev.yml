@@ -1,0 +1,28 @@
+name: itdesk-dev
+
+# Development compose — runs only Mongo and Redis
+# The API and Web run directly with `pnpm dev` (hot reload)
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: devpassword
+      MONGO_INITDB_DATABASE: itdesk
+      MONGO_APP_PASSWORD: devpassword
+    volumes:
+      - mongo_dev_data:/data/db
+      - ./mongo/init-mongo.js:/docker-entrypoint-initdb.d/01-init.js:ro
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+volumes:
+  mongo_dev_data:

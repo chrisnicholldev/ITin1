@@ -1,0 +1,15 @@
+import { Router, type IRouter } from 'express';
+import * as c from './user.controller.js';
+import { requireAuth, requireAdmin } from '../../middleware/auth.middleware.js';
+
+const router: IRouter = Router();
+
+router.use(requireAuth);
+
+router.get('/', requireAdmin, c.listUsers);
+router.post('/', requireAdmin, c.createUser);
+router.get('/:id', requireAdmin, c.getUser);
+router.patch('/:id', requireAdmin, c.updateUser);
+router.delete('/:id', requireAdmin, c.deactivateUser);
+
+export default router;

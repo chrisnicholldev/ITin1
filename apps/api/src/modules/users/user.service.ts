@@ -1,0 +1,84 @@
+import { User, type IUserDocument } from './user.model.js';
+import { AppError } from '../../middleware/error.middleware.js';
+import type { CreateUserInput, UpdateUserInput } from '@itdesk/shared';
+import bcrypt from 'bcryptjs';
+import { AuthProvider } from '@itdesk/shared';
+
+function toResponse(user: IUserDocument) {
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    username: user.username,
+    role: user.role,
+    authProvider: user.authProvider,
+    department: user.department,
+    title: user.title,
+    phone: user.phone,
+    avatarUrl: user.avatarUrl,
+    isActive: user.isActive,
+    lastLogin: user.lastLogin,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
+}
+
+export type ListUsersQuery = { sort: string; page: number; limit: number; order: 'asc' | 'desc'; role?: string; department?: string; search?: string };
+
+export async function listUsers(query: ListUsersQuery) {
+  const filter: Record<string, unknown> = {};
+  if (query.role) filter['role'] = query.role;
+  if (query.department) filter['department'] = query.department;
+  if (query.search) {
+    filter['$or'] = [
+      { displayName: { $regex: query.search, $options: 'i' } },
+      { email: { $regex: query.search, $options: 'i' } },
+      { username: { $regex: query.search, $options: 'i' } },
+    ];
+  }
+
+  const [data, total] = await Promise.all([
+    User.find(filter)
+      .sort({ [query.sort]: query.order === 'asc' ? 1 : -1 })
+      .skip((query.page - 1) * query.limit)
+      .limit(query.limit) as Promise<IUserDocument[]>,
+    User.countDocuments(filter),
+  ]);
+
+  return {
+    data: data.map(toResponse),
+    meta: { total, page: query.page, limit: query.limit, totalPages: Math.ceil(total / query.limit) },
+  };
+}
+
+export async function getUser(id: string) {
+  const user = await User.findById(id) as IUserDocument | null;
+  if (!user) throw new AppError(404, 'User not found');
+  return toResponse(user);
+}
+
+export async function createUser(input: CreateUserInput) {
+  const existing = await User.findOne({ $or: [{ email: input.email }, { username: input.username }] });
+  if (existing) throw new AppError(409, 'User with that email or username already exists');
+
+  const doc: Record<string, unknown> = { ...input, authProvider: AuthProvider.LOCAL };
+  if (input.password) {
+    doc['passwordHash'] = await bcrypt.hash(input.password, 12);
+  }
+  delete doc['password'];
+
+  const user = await User.create(doc) as IUserDocument;
+  return toResponse(user);
+}
+
+export async function updateUser(id: string, input: UpdateUserInput) {
+  const user = await User.findByIdAndUpdate(id, { $set: input }, { new: true, runValidators: true }) as IUserDocument | null;
+  if (!user) throw new AppError(404, 'User not found');
+  return toResponse(user);
+}
+
+export async function deactivateUser(id: string) {
+  const user = await User.findByIdAndUpdate(id, { $set: { isActive: false } }, { new: true }) as IUserDocument | null;
+  if (!user) throw new AppError(404, 'User not found');
+  return toResponse(user);
+}
