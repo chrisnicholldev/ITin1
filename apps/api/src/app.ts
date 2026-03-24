@@ -16,6 +16,7 @@ import ticketRoutes from './modules/tickets/ticket.routes.js';
 import assetRoutes from './modules/assets/asset.routes.js';
 import categoryRoutes from './modules/categories/category.routes.js';
 import vaultRoutes from './modules/vault/vault.routes.js';
+import rackRoutes from './modules/network/rack.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -50,6 +51,7 @@ export function createApp(): Express {
   v1.use('/assets', assetRoutes);
   v1.use('/categories', categoryRoutes);
   v1.use('/vault', vaultRoutes);
+  v1.use('/network/racks', rackRoutes);
 
   v1.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

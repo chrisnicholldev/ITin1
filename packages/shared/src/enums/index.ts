@@ -60,6 +60,14 @@ export const AssetStatus = {
 } as const;
 export type AssetStatus = (typeof AssetStatus)[keyof typeof AssetStatus];
 
+export const RackMountType = {
+  ASSET: 'asset',
+  PATCH_PANEL: 'patch_panel',
+  BLANK: 'blank',
+  CABLE_MANAGEMENT: 'cable_management',
+} as const;
+export type RackMountType = (typeof RackMountType)[keyof typeof RackMountType];
+
 export const CredentialCategory = {
   SERVICE_ACCOUNT: 'service_account',
   DEVICE: 'device',

@@ -7,6 +7,7 @@ import {
   Ticket,
   Monitor,
   Shield,
+  Network,
   Users,
   Settings,
   LogOut,
@@ -21,6 +22,7 @@ const navItems = [
   { href: '/tickets', label: 'Tickets', icon: Ticket, minRole: 'end_user' },
   { href: '/assets', label: 'Assets', icon: Monitor, minRole: 'it_technician' },
   { href: '/vault', label: 'Vault', icon: Shield, minRole: 'it_technician' },
+  { href: '/network/racks', label: 'Network', icon: Network, minRole: 'it_technician' },
   { href: '/admin/users', label: 'Users', icon: Users, minRole: 'it_admin' },
   { href: '/admin/settings', label: 'Settings', icon: Settings, minRole: 'it_admin' },
 ];
