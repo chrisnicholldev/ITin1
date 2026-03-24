@@ -15,7 +15,8 @@ function clientIp(req: Request): string | undefined {
 }
 
 export async function listCredentials(req: Request, res: Response) {
-  const data = await service.listCredentials();
+  const assetId = req.query['assetId'] as string | undefined;
+  const data = await service.listCredentials(assetId);
   res.json(data);
 }
 

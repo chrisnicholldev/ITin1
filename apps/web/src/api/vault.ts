@@ -1,8 +1,8 @@
 import { apiClient } from './client';
 import type { CreateCredentialInput, UpdateCredentialInput } from '@itdesk/shared';
 
-export async function listCredentials() {
-  const { data } = await apiClient.get('/vault');
+export async function listCredentials(assetId?: string) {
+  const { data } = await apiClient.get('/vault', { params: assetId ? { assetId } : undefined });
   return data;
 }
 

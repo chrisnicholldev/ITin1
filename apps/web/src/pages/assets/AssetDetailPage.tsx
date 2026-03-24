@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Pencil, X, Check, Loader2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Pencil, X, Check, Loader2, ExternalLink, Plus, Trash2, KeyRound } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getAsset, updateAsset } from '@/api/assets';
 import { getUsers } from '@/api/users';
 import { getTickets } from '@/api/tickets';
-import { UpdateAssetSchema, AssetType, AssetStatus, type UpdateAssetInput } from '@itdesk/shared';
+import { listCredentials, deleteCredential } from '@/api/vault';
+import { UpdateAssetSchema, AssetType, AssetStatus, type UpdateAssetInput, type CredentialResponse } from '@itdesk/shared';
+import { PasswordCell } from '@/components/vault/PasswordCell';
+import { CredentialModal } from '@/components/vault/CredentialModal';
+import { useAuthStore } from '@/stores/auth.store';
+import { UserRole } from '@itdesk/shared';
 
 const statusVariant: Record<string, string> = {
   active: 'success', inactive: 'secondary', decommissioned: 'outline',
@@ -49,6 +54,10 @@ export function AssetDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
+  const [credModalOpen, setCredModalOpen] = useState(false);
+  const [editingCred, setEditingCred] = useState<CredentialResponse | undefined>();
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.role === UserRole.IT_ADMIN || user?.role === UserRole.SUPER_ADMIN;
 
   const { data: asset, isLoading } = useQuery({
     queryKey: ['assets', id],
@@ -65,6 +74,17 @@ export function AssetDetailPage() {
     queryKey: ['tickets', { assetId: id }],
     queryFn: () => getTickets({ limit: 10 }),
     enabled: !!id,
+  });
+
+  const { data: credentials = [] } = useQuery({
+    queryKey: ['vault', 'asset', id],
+    queryFn: () => listCredentials(id!),
+    enabled: !!id,
+  });
+
+  const { mutate: doDeleteCred } = useMutation({
+    mutationFn: deleteCredential,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vault'] }),
   });
 
   const users: Array<{ id: string; displayName: string }> = usersData?.data ?? [];
@@ -358,9 +378,79 @@ export function AssetDetailPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Linked credentials */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5" /> Credentials
+                  </CardTitle>
+                  {isAdmin && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => { setEditingCred(undefined); setCredModalOpen(true); }}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {(credentials as CredentialResponse[]).length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No credentials linked.</p>
+                ) : (
+                  (credentials as CredentialResponse[]).map((c) => (
+                    <div key={c.id} className="rounded-md border bg-muted/30 px-3 py-2 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium truncate">{c.title}</span>
+                        {isAdmin && (
+                          <div className="flex gap-0.5 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 w-5 p-0"
+                              onClick={() => { setEditingCred(c); setCredModalOpen(true); }}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 w-5 p-0 hover:text-destructive"
+                              onClick={() => { if (confirm(`Delete "${c.title}"?`)) doDeleteCred(c.id); }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      {c.username && (
+                        <p className="text-xs text-muted-foreground font-mono">{c.username}</p>
+                      )}
+                      <PasswordCell id={c.id} />
+                      {c.url && (
+                        <a href={c.url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline truncate block">
+                          {c.url}
+                        </a>
+                      )}
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       )}
+
+      <CredentialModal
+        open={credModalOpen}
+        onClose={() => { setCredModalOpen(false); setEditingCred(undefined); }}
+        editing={editingCred}
+        preLinkedAssetId={id}
+      />
     </div>
   );
 }

@@ -45,8 +45,9 @@ async function logAudit(
   });
 }
 
-export async function listCredentials() {
-  const docs = await Credential.find()
+export async function listCredentials(assetId?: string) {
+  const filter = assetId ? { linkedAsset: new mongoose.Types.ObjectId(assetId) } : {};
+  const docs = await Credential.find(filter)
     .populate('linkedAsset', 'name assetTag')
     .populate('createdBy', 'displayName')
     .populate('updatedBy', 'displayName')
