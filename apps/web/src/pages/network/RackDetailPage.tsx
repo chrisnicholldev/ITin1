@@ -48,7 +48,7 @@ function MountModal({
 
   const { data: assetsData } = useQuery({
     queryKey: ['assets', 'all'],
-    queryFn: () => getAssets({ limit: 200 }),
+    queryFn: () => getAssets({ limit: 100 }),
   });
   const assets: any[] = assetsData?.data ?? [];
 

@@ -42,7 +42,7 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId }: Pr
 
   const { data: assetsData } = useQuery({
     queryKey: ['assets', 'all'],
-    queryFn: () => getAssets({ limit: 200 }),
+    queryFn: () => getAssets({ limit: 100 }),
   });
   const assets: Array<{ id: string; name: string; assetTag: string }> = assetsData?.data ?? [];
 
