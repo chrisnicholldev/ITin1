@@ -6,6 +6,7 @@ const router: IRouter = Router();
 
 router.use(requireAuth, requireTech);
 
+router.get('/by-asset/:assetId', c.getMountsByAsset);
 router.get('/', c.listRacks);
 router.post('/', requireAdmin, c.createRack);
 router.get('/:id', c.getRack);

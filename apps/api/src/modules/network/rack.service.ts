@@ -165,6 +165,22 @@ export async function updateMount(rackId: string, mountId: string, input: Partia
   return mountToResponse(updated);
 }
 
+export async function getMountsByAsset(assetId: string) {
+  const mounts = await RackMount.find({ asset: new mongoose.Types.ObjectId(assetId) })
+    .populate('rack', 'name location totalU') as IRackMountDocument[];
+
+  return mounts.map((m) => {
+    const obj = m.toObject({ virtuals: true }) as Record<string, any>;
+    const rack = obj['rack'];
+    return {
+      mountId: m.id as string,
+      startU: m.startU,
+      endU: m.endU,
+      rack: rack ? { id: String(rack._id), name: rack.name, location: rack.location } : null,
+    };
+  });
+}
+
 export async function removeMount(rackId: string, mountId: string) {
   const result = await RackMount.findOneAndDelete({
     _id: new mongoose.Types.ObjectId(mountId),

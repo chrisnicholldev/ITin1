@@ -38,3 +38,8 @@ export async function updateMount(rackId: string, mountId: string, input: Update
 export async function removeMount(rackId: string, mountId: string) {
   await apiClient.delete(`/network/racks/${rackId}/mounts/${mountId}`);
 }
+
+export async function getMountsByAsset(assetId: string) {
+  const { data } = await apiClient.get(`/network/racks/by-asset/${assetId}`);
+  return data;
+}

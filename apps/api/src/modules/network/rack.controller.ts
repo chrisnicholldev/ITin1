@@ -38,6 +38,10 @@ export async function updateMount(req: Request, res: Response) {
   res.json(await service.updateMount(String(req.params['id']), String(req.params['mountId']), req.body));
 }
 
+export async function getMountsByAsset(req: Request, res: Response) {
+  res.json(await service.getMountsByAsset(String(req.params['assetId'])));
+}
+
 export async function removeMount(req: Request, res: Response) {
   await service.removeMount(String(req.params['id']), String(req.params['mountId']));
   res.status(204).end();

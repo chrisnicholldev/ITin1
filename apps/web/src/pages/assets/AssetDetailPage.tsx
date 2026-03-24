@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Pencil, X, Check, Loader2, ExternalLink, Plus, Trash2, KeyRound } from 'lucide-react';
+import { ArrowLeft, Pencil, X, Check, Loader2, ExternalLink, Plus, Trash2, KeyRound, Server } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { getAsset, updateAsset } from '@/api/assets';
 import { getUsers } from '@/api/users';
 import { getTickets } from '@/api/tickets';
 import { listCredentials, deleteCredential } from '@/api/vault';
+import { getMountsByAsset } from '@/api/racks';
 import { UpdateAssetSchema, AssetType, AssetStatus, type UpdateAssetInput, type CredentialResponse } from '@itdesk/shared';
 import { PasswordCell } from '@/components/vault/PasswordCell';
 import { CredentialModal } from '@/components/vault/CredentialModal';
@@ -73,6 +74,12 @@ export function AssetDetailPage() {
   const { data: ticketsData } = useQuery({
     queryKey: ['tickets', { assetId: id }],
     queryFn: () => getTickets({ limit: 10 }),
+    enabled: !!id,
+  });
+
+  const { data: rackMounts = [] } = useQuery({
+    queryKey: ['rack-mounts', 'asset', id],
+    queryFn: () => getMountsByAsset(id!),
     enabled: !!id,
   });
 
@@ -376,6 +383,34 @@ export function AssetDetailPage() {
                     </Link>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Rack location */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-1.5">
+                  <Server className="w-3.5 h-3.5" /> Rack Location
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {(rackMounts as any[]).length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Not mounted in any rack.</p>
+                ) : (
+                  (rackMounts as any[]).map((m: any) => (
+                    <Link
+                      key={m.mountId}
+                      to={`/network/racks/${m.rack.id}`}
+                      className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 hover:border-primary transition-colors"
+                    >
+                      <div>
+                        <p className="text-xs font-medium">{m.rack.name}</p>
+                        <p className="text-xs text-muted-foreground">{m.rack.location} · U{m.startU}{m.endU !== m.startU ? `–U${m.endU}` : ''}</p>
+                      </div>
+                      <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0" />
+                    </Link>
+                  ))
+                )}
               </CardContent>
             </Card>
 
