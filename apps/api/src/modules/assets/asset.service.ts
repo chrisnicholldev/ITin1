@@ -81,8 +81,11 @@ export async function getAsset(id: string) {
 }
 
 export async function createAsset(input: CreateAssetInput) {
+  const count = await Asset.countDocuments();
+  const assetTag = `ASSET-${String(count + 1).padStart(4, '0')}`;
   const doc: Record<string, unknown> = {
     ...input,
+    assetTag,
     assignedTo: input.assignedTo ? new mongoose.Types.ObjectId(input.assignedTo) : undefined,
   };
   const asset = await Asset.create(doc) as IAssetDocument;

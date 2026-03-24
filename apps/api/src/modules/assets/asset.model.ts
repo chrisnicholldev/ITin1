@@ -99,13 +99,5 @@ assetSchema.index({ status: 1 });
 assetSchema.index({ assignedTo: 1 });
 assetSchema.index({ externalSource: 1, externalId: 1 });
 
-// Auto-generate asset tag before save
-assetSchema.pre('save', async function (next) {
-  if (this.isNew && !this.assetTag) {
-    const count = await mongoose.model('Asset').countDocuments();
-    this.assetTag = `ASSET-${String(count + 1).padStart(4, '0')}`;
-  }
-  next();
-});
 
 export const Asset: Model<IAssetDocument> = mongoose.model<IAssetDocument>('Asset', assetSchema);
