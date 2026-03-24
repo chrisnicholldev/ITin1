@@ -33,18 +33,30 @@ const SpecsSchema = z.object({
   macAddress: z.string().optional(),
 }).optional();
 
+// Accepts YYYY-MM-DD (HTML date input) or full ISO strings, strips empty strings
+const OptionalDateString = z.preprocess(
+  (v) => (v === '' || v === null ? undefined : v),
+  z.string().optional(),
+);
+
+// Accepts numbers or NaN (empty numeric inputs), strips NaN/empty
+const OptionalNumber = z.preprocess(
+  (v) => (v === '' || v === null || (typeof v === 'number' && isNaN(v)) ? undefined : v),
+  z.number().optional(),
+);
+
 const LicenseSchema = z.object({
   key: z.string().optional(),
-  seats: z.number().int().positive().optional(),
-  seatsUsed: z.number().int().min(0).optional(),
-  expiryDate: z.string().datetime().optional(),
+  seats: OptionalNumber.pipe(z.number().int().positive().optional()),
+  seatsUsed: OptionalNumber.pipe(z.number().int().min(0).optional()),
+  expiryDate: OptionalDateString,
   vendor: z.string().optional(),
 }).optional();
 
 const NetworkSchema = z.object({
   ipAddress: z.string().optional(),
   macAddress: z.string().optional(),
-  vlan: z.number().int().optional(),
+  vlan: OptionalNumber.pipe(z.number().int().optional()),
   port: z.string().optional(),
   connectedTo: z.string().optional(),
 }).optional();
@@ -58,9 +70,9 @@ export const CreateAssetSchema = z.object({
   manufacturer: z.string().max(100).optional(),
   modelName: z.string().max(100).optional(),
   serialNumber: z.string().max(100).optional(),
-  purchaseDate: z.string().datetime().optional(),
-  warrantyExpiry: z.string().datetime().optional(),
-  purchaseCost: z.number().min(0).optional(),
+  purchaseDate: OptionalDateString,
+  warrantyExpiry: OptionalDateString,
+  purchaseCost: OptionalNumber.pipe(z.number().min(0).optional()),
   specs: SpecsSchema,
   license: LicenseSchema,
   network: NetworkSchema,
