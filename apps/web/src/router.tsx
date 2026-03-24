@@ -11,6 +11,7 @@ import { AssetDetailPage } from '@/pages/assets/AssetDetailPage';
 import { VaultPage } from '@/pages/vault/VaultPage';
 import { RacksPage } from '@/pages/network/RacksPage';
 import { RackDetailPage } from '@/pages/network/RackDetailPage';
+import { UsersPage } from '@/pages/admin/UsersPage';
 
 export const router = createBrowserRouter(
   [
@@ -33,7 +34,7 @@ export const router = createBrowserRouter(
         { path: 'vault', element: <VaultPage /> },
         { path: 'network/racks', element: <RacksPage /> },
         { path: 'network/racks/:id', element: <RackDetailPage /> },
-        { path: 'admin/users', element: <div className="p-4 text-muted-foreground">User management — coming soon</div> },
+        { path: 'admin/users', element: <UsersPage /> },
         { path: 'admin/settings', element: <div className="p-4 text-muted-foreground">Settings — coming soon</div> },
       ],
     },

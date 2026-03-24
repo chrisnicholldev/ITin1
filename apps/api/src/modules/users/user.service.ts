@@ -82,3 +82,19 @@ export async function deactivateUser(id: string) {
   if (!user) throw new AppError(404, 'User not found');
   return toResponse(user);
 }
+
+export async function reactivateUser(id: string) {
+  const user = await User.findByIdAndUpdate(id, { $set: { isActive: true } }, { new: true }) as IUserDocument | null;
+  if (!user) throw new AppError(404, 'User not found');
+  return toResponse(user);
+}
+
+export async function resetPassword(id: string, newPassword: string) {
+  const user = await User.findById(id) as IUserDocument | null;
+  if (!user) throw new AppError(404, 'User not found');
+  if (user.authProvider !== AuthProvider.LOCAL) {
+    throw new AppError(400, 'Cannot reset password for LDAP users');
+  }
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await User.findByIdAndUpdate(id, { $set: { passwordHash } });
+}

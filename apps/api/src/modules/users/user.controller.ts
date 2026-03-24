@@ -30,6 +30,15 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
 }
 
 export async function deactivateUser(req: Request, res: Response): Promise<void> {
-  await userService.deactivateUser(String(req.params['id']));
+  res.json(await userService.deactivateUser(String(req.params['id'])));
+}
+
+export async function reactivateUser(req: Request, res: Response): Promise<void> {
+  res.json(await userService.reactivateUser(String(req.params['id'])));
+}
+
+export async function resetPassword(req: Request, res: Response): Promise<void> {
+  const { password } = z.object({ password: z.string().min(8) }).parse(req.body);
+  await userService.resetPassword(String(req.params['id']), password);
   res.status(204).send();
 }
