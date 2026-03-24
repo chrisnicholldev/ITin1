@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Ticket,
   Monitor,
+  Shield,
   Users,
   Settings,
   LogOut,
@@ -19,6 +20,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, minRole: 'end_user' },
   { href: '/tickets', label: 'Tickets', icon: Ticket, minRole: 'end_user' },
   { href: '/assets', label: 'Assets', icon: Monitor, minRole: 'it_technician' },
+  { href: '/vault', label: 'Vault', icon: Shield, minRole: 'it_technician' },
   { href: '/admin/users', label: 'Users', icon: Users, minRole: 'it_admin' },
   { href: '/admin/settings', label: 'Settings', icon: Settings, minRole: 'it_admin' },
 ];

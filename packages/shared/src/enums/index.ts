@@ -60,6 +60,24 @@ export const AssetStatus = {
 } as const;
 export type AssetStatus = (typeof AssetStatus)[keyof typeof AssetStatus];
 
+export const CredentialCategory = {
+  SERVICE_ACCOUNT: 'service_account',
+  DEVICE: 'device',
+  SHARED_ACCOUNT: 'shared_account',
+  API_KEY: 'api_key',
+  OTHER: 'other',
+} as const;
+export type CredentialCategory = (typeof CredentialCategory)[keyof typeof CredentialCategory];
+
+export const VaultAuditAction = {
+  CREATE: 'create',
+  UPDATE: 'update',
+  DELETE: 'delete',
+  VIEW: 'view',
+  COPY: 'copy',
+} as const;
+export type VaultAuditAction = (typeof VaultAuditAction)[keyof typeof VaultAuditAction];
+
 export const ExternalSource = {
   INTUNE: 'intune',
   MERAKI: 'meraki',

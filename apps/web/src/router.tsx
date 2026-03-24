@@ -8,6 +8,7 @@ import { CreateTicketPage } from '@/pages/tickets/CreateTicketPage';
 import { AssetsPage } from '@/pages/assets/AssetsPage';
 import { CreateAssetPage } from '@/pages/assets/CreateAssetPage';
 import { AssetDetailPage } from '@/pages/assets/AssetDetailPage';
+import { VaultPage } from '@/pages/vault/VaultPage';
 
 export const router = createBrowserRouter(
   [
@@ -27,6 +28,7 @@ export const router = createBrowserRouter(
         { path: 'assets', element: <AssetsPage /> },
         { path: 'assets/new', element: <CreateAssetPage /> },
         { path: 'assets/:id', element: <AssetDetailPage /> },
+        { path: 'vault', element: <VaultPage /> },
         { path: 'admin/users', element: <div className="p-4 text-muted-foreground">User management — coming soon</div> },
         { path: 'admin/settings', element: <div className="p-4 text-muted-foreground">Settings — coming soon</div> },
       ],

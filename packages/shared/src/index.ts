@@ -8,3 +8,4 @@ export * from './schemas/ticket.schema.js';
 export * from './schemas/asset.schema.js';
 export * from './schemas/category.schema.js';
 export * from './schemas/pagination.schema.js';
+export * from './schemas/vault.schema.js';
