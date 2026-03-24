@@ -39,9 +39,14 @@ const OptionalDateString = z.preprocess(
   z.string().optional(),
 );
 
-// Accepts numbers or NaN (empty numeric inputs), strips NaN/empty
+// Accepts numbers, numeric strings, or NaN (empty numeric inputs), strips NaN/empty
 const OptionalNumber = z.preprocess(
-  (v) => (v === '' || v === null || (typeof v === 'number' && isNaN(v)) ? undefined : v),
+  (v) => {
+    if (v === '' || v === null || v === undefined) return undefined;
+    if (typeof v === 'number') return isNaN(v) ? undefined : v;
+    if (typeof v === 'string' && v.trim() !== '') return Number(v);
+    return v;
+  },
   z.number().optional(),
 );
 
