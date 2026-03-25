@@ -47,14 +47,19 @@ export async function startWorkers() {
     console.error(`[intune-sync] Job ${job?.id} failed:`, err.message);
   });
 
-  // Register repeatable schedule
-  await intuneQueue.upsertJobScheduler(
-    INTUNE_REPEAT_JOB_KEY,
-    { pattern: env.INTUNE_SYNC_SCHEDULE },
-    { name: 'sync', data: { triggeredBy: 'schedule' } },
-  );
-
-  console.log(`[intune-sync] Worker started, schedule: ${env.INTUNE_SYNC_SCHEDULE}`);
+  // Register repeatable schedule only if a cron pattern is configured
+  if (env.INTUNE_SYNC_SCHEDULE) {
+    await intuneQueue.upsertJobScheduler(
+      INTUNE_REPEAT_JOB_KEY,
+      { pattern: env.INTUNE_SYNC_SCHEDULE },
+      { name: 'sync', data: { triggeredBy: 'schedule' } },
+    );
+    console.log(`[intune-sync] Worker started, schedule: ${env.INTUNE_SYNC_SCHEDULE}`);
+  } else {
+    // Remove any previously registered schedule
+    await intuneQueue.removeJobScheduler(INTUNE_REPEAT_JOB_KEY);
+    console.log('[intune-sync] Worker started, no schedule (manual only)');
+  }
 }
 
 export async function stopWorkers() {

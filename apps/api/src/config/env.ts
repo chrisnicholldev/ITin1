@@ -37,7 +37,7 @@ const EnvSchema = z.object({
   INTUNE_TENANT_ID: z.string().optional(),
   INTUNE_CLIENT_ID: z.string().optional(),
   INTUNE_CLIENT_SECRET: z.string().optional(),
-  INTUNE_SYNC_SCHEDULE: z.string().default('0 * * * *'),
+  INTUNE_SYNC_SCHEDULE: z.string().optional(),
 
   UPLOAD_DIR: z.string().default('./uploads'),
   MAX_FILE_SIZE_MB: z.coerce.number().default(25),
