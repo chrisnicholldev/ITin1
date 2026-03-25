@@ -9,11 +9,14 @@ export const CreateRackSchema = z.object({
 
 export const UpdateRackSchema = CreateRackSchema.partial();
 
+export const RackFaceSchema = z.enum(['front', 'back', 'both']);
+
 export const CreateRackMountSchema = z.object({
   assetId: z.string().optional(),
-  label: z.string().max(100).optional(), // for non-asset entries
+  label: z.string().max(100).optional(),
   startU: z.coerce.number().int().min(1),
   endU: z.coerce.number().int().min(1),
+  face: RackFaceSchema.default('both'),
   notes: z.string().max(500).optional(),
 }).refine((d) => d.endU >= d.startU, {
   message: 'End U must be greater than or equal to Start U',
@@ -27,6 +30,7 @@ export const UpdateRackMountSchema = z.object({
   label: z.string().max(100).optional(),
   startU: z.coerce.number().int().min(1).optional(),
   endU: z.coerce.number().int().min(1).optional(),
+  face: RackFaceSchema.optional(),
   notes: z.string().max(500).optional(),
 });
 
@@ -46,6 +50,7 @@ export const RackMountResponseSchema = z.object({
   label: z.string().optional(),
   startU: z.number(),
   endU: z.number(),
+  face: RackFaceSchema,
   notes: z.string().optional(),
 });
 
@@ -60,6 +65,7 @@ export const RackResponseSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
+export type RackFace = z.infer<typeof RackFaceSchema>;
 export type CreateRackInput = z.infer<typeof CreateRackSchema>;
 export type UpdateRackInput = z.infer<typeof UpdateRackSchema>;
 export type CreateRackMountInput = z.infer<typeof CreateRackMountSchema>;

@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { Router, type IRouter } from 'express';
 import * as c from './location.controller.js';
 import { requireAuth, requireAdmin } from '../../middleware/auth.middleware.js';
 
-const router = Router();
+const router: IRouter = Router();
 router.use(requireAuth);
 router.get('/', c.listLocations);
 router.post('/', requireAdmin, c.createLocation);

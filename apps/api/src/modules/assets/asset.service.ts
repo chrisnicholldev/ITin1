@@ -5,6 +5,8 @@ import type { CreateAssetInput, UpdateAssetInput } from '@itdesk/shared';
 import { z } from 'zod';
 
 function toResponse(asset: IAssetDocument) {
+  const obj = asset.toObject({ virtuals: true }) as Record<string, any>;
+  const networkDoc = obj['networkId'];
   return {
     id: asset.id,
     assetTag: asset.assetTag,
@@ -23,6 +25,9 @@ function toResponse(asset: IAssetDocument) {
     specs: asset.specs,
     license: asset.license,
     network: asset.network,
+    linkedNetwork: networkDoc?._id
+      ? { id: String(networkDoc._id), name: networkDoc.name, address: networkDoc.address, vlanId: networkDoc.vlanId }
+      : undefined,
     notes: asset.notes,
     externalSource: asset.externalSource,
     externalId: asset.externalId,
@@ -35,12 +40,13 @@ function toResponse(asset: IAssetDocument) {
 
 const ListQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(25),
+  limit: z.coerce.number().int().positive().max(500).default(25),
   sort: z.string().default('createdAt'),
   order: z.enum(['asc', 'desc']).default('desc'),
   type: z.string().optional(),
   status: z.string().optional(),
   assignedTo: z.string().optional(),
+  networkId: z.string().optional(),
   externalSource: z.string().optional(),
   search: z.string().optional(),
 });
@@ -52,6 +58,7 @@ export async function listAssets(rawQuery: unknown) {
   if (query.type) filter['type'] = query.type;
   if (query.status) filter['status'] = query.status;
   if (query.assignedTo) filter['assignedTo'] = new mongoose.Types.ObjectId(query.assignedTo);
+  if (query.networkId) filter['networkId'] = new mongoose.Types.ObjectId(query.networkId);
   if (query.externalSource === 'manual') {
     filter['externalSource'] = { $exists: false };
   } else if (query.externalSource) {
@@ -70,6 +77,7 @@ export async function listAssets(rawQuery: unknown) {
     Asset.find(filter)
       .populate('assignedTo', 'displayName email')
       .populate('assignedContact', 'displayName email upn department jobTitle')
+      .populate('networkId', 'name address vlanId')
       .sort({ [query.sort]: query.order === 'asc' ? 1 : -1 })
       .skip((query.page - 1) * query.limit)
       .limit(query.limit) as Promise<IAssetDocument[]>,
@@ -85,7 +93,8 @@ export async function listAssets(rawQuery: unknown) {
 export async function getAsset(id: string) {
   const asset = await Asset.findById(id)
     .populate('assignedTo', 'displayName email')
-    .populate('assignedContact', 'displayName email upn department jobTitle') as IAssetDocument | null;
+    .populate('assignedContact', 'displayName email upn department jobTitle')
+    .populate('networkId', 'name address vlanId') as IAssetDocument | null;
   if (!asset) throw new AppError(404, 'Asset not found');
   return toResponse(asset);
 }
@@ -97,8 +106,10 @@ export async function createAsset(input: CreateAssetInput) {
     ...input,
     assetTag,
     assignedTo: input.assignedTo ? new mongoose.Types.ObjectId(input.assignedTo) : undefined,
+    networkId: (input as any).networkId ? new mongoose.Types.ObjectId((input as any).networkId) : undefined,
   };
   const asset = await Asset.create(doc) as IAssetDocument;
+  await asset.populate('networkId', 'name address vlanId');
   return toResponse(asset);
 }
 
@@ -107,9 +118,13 @@ export async function updateAsset(id: string, input: UpdateAssetInput) {
   if (input.assignedTo !== undefined) {
     updates['assignedTo'] = input.assignedTo ? new mongoose.Types.ObjectId(input.assignedTo) : null;
   }
+  if ((input as any).networkId !== undefined) {
+    updates['networkId'] = (input as any).networkId ? new mongoose.Types.ObjectId((input as any).networkId) : null;
+  }
 
   const asset = await Asset.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true })
-    .populate('assignedTo', 'displayName email') as IAssetDocument | null;
+    .populate('assignedTo', 'displayName email')
+    .populate('networkId', 'name address vlanId') as IAssetDocument | null;
 
   if (!asset) throw new AppError(404, 'Asset not found');
   return toResponse(asset);

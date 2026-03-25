@@ -11,6 +11,7 @@ import { AssetDetailPage } from '@/pages/assets/AssetDetailPage';
 import { VaultPage } from '@/pages/vault/VaultPage';
 import { RacksPage } from '@/pages/network/RacksPage';
 import { RackDetailPage } from '@/pages/network/RackDetailPage';
+import { NetworksPage } from '@/pages/network/NetworksPage';
 import { UsersPage } from '@/pages/admin/UsersPage';
 import { IntegrationsPage } from '@/pages/admin/IntegrationsPage';
 import { LocationsPage } from '@/pages/admin/LocationsPage';
@@ -39,6 +40,7 @@ export const router = createBrowserRouter(
         { path: 'vault', element: <VaultPage /> },
         { path: 'network/racks', element: <RacksPage /> },
         { path: 'network/racks/:id', element: <RackDetailPage /> },
+        { path: 'network/networks', element: <NetworksPage /> },
         { path: 'docs', element: <DocsPage /> },
         { path: 'docs/articles/new', element: <ArticleEditorPage /> },
         { path: 'docs/articles/:slug', element: <ArticlePage /> },

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -16,16 +16,14 @@ import { CreateRackMountSchema, type CreateRackMountInput, type RackMountRespons
 import { useAuthStore } from '@/stores/auth.store';
 import { UserRole } from '@itdesk/shared';
 
-// ── Type colour map ───────────────────────────────────────────────────────────
-
 const TYPE_COLOURS: Record<string, string> = {
-  server:         'bg-blue-600 border-blue-700 text-white',
-  switch:         'bg-green-600 border-green-700 text-white',
-  router:         'bg-purple-600 border-purple-700 text-white',
-  firewall:       'bg-red-600 border-red-700 text-white',
-  access_point:   'bg-yellow-500 border-yellow-600 text-white',
-  patch_panel:    'bg-gray-500 border-gray-600 text-white',
-  other:          'bg-slate-500 border-slate-600 text-white',
+  server:       'bg-blue-600 border-blue-700 text-white',
+  switch:       'bg-green-600 border-green-700 text-white',
+  router:       'bg-purple-600 border-purple-700 text-white',
+  firewall:     'bg-red-600 border-red-700 text-white',
+  access_point: 'bg-yellow-500 border-yellow-600 text-white',
+  patch_panel:  'bg-gray-500 border-gray-600 text-white',
+  other:        'bg-slate-500 border-slate-600 text-white',
 };
 
 function typeColour(type?: string) {
@@ -35,36 +33,45 @@ function typeColour(type?: string) {
 // ── Mount modal ───────────────────────────────────────────────────────────────
 
 function MountModal({
-  open, onClose, rackId, totalU, preStartU, editing,
+  open, onClose, rackId, totalU, preStartU, preFace, editing,
 }: {
   open: boolean;
   onClose: () => void;
   rackId: string;
   totalU: number;
   preStartU?: number;
+  preFace?: 'front' | 'back' | 'both';
   editing?: RackMountResponse;
 }) {
   const queryClient = useQueryClient();
 
+  const [useAsset, setUseAsset] = useState(!editing?.label || !!editing?.asset);
+  const [assetSearch, setAssetSearch] = useState(
+    editing?.asset ? `${editing.asset.assetTag} — ${editing.asset.name}` : ''
+  );
+  const [assetDropOpen, setAssetDropOpen] = useState(false);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>(editing?.asset?.id);
+
   const { data: assetsData } = useQuery({
-    queryKey: ['assets', 'all'],
-    queryFn: () => getAssets({ limit: 100 }),
+    queryKey: ['assets', 'rack-search', assetSearch, selectedAssetId],
+    queryFn: () => getAssets({ limit: 50, ...(assetSearch && !selectedAssetId ? { search: assetSearch } : {}) }),
   });
   const assets: any[] = assetsData?.data ?? [];
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<CreateRackMountInput>({
     resolver: zodResolver(CreateRackMountSchema),
     defaultValues: editing
-      ? { assetId: editing.asset?.id, label: editing.label, startU: editing.startU, endU: editing.endU, notes: editing.notes ?? '' }
-      : { startU: preStartU ?? 1, endU: preStartU ?? 1, notes: '' },
+      ? { assetId: editing.asset?.id, label: editing.label, startU: editing.startU, endU: editing.endU, face: editing.face ?? 'both', notes: editing.notes ?? '' }
+      : { startU: preStartU ?? 1, endU: preStartU ?? 1, face: preFace ?? 'both', notes: '' },
   });
 
   const startU = watch('startU');
+  const face = watch('face');
 
   const { mutate, isPending, error: mutError } = useMutation({
     mutationFn: (data: CreateRackMountInput) =>
       editing
-        ? updateMount(rackId, editing.id, { startU: data.startU, endU: data.endU, label: data.label, notes: data.notes })
+        ? updateMount(rackId, editing.id, { startU: data.startU, endU: data.endU, face: data.face, label: data.label, notes: data.notes })
         : addMount(rackId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['racks', rackId] });
@@ -72,7 +79,17 @@ function MountModal({
     },
   });
 
-  const [useAsset, setUseAsset] = useState(!editing?.label || !!editing?.asset);
+  const assetRefEl = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (assetRefEl.current && !assetRefEl.current.contains(e.target as Node)) {
+        setAssetDropOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -84,30 +101,54 @@ function MountModal({
 
           {/* Asset or label toggle */}
           <div className="flex gap-2">
-            <Button type="button" size="sm" variant={useAsset ? 'default' : 'outline'} onClick={() => setUseAsset(true)}>
-              Asset
-            </Button>
-            <Button type="button" size="sm" variant={!useAsset ? 'default' : 'outline'} onClick={() => setUseAsset(false)}>
-              Label only
-            </Button>
+            <Button type="button" size="sm" variant={useAsset ? 'default' : 'outline'} onClick={() => setUseAsset(true)}>Asset</Button>
+            <Button type="button" size="sm" variant={!useAsset ? 'default' : 'outline'} onClick={() => setUseAsset(false)}>Label only</Button>
           </div>
 
           {useAsset ? (
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" ref={assetRefEl}>
               <Label>Asset *</Label>
-              <Select
-                defaultValue={editing?.asset?.id ?? ''}
-                onValueChange={(v) => setValue('assetId', v)}
-              >
-                <SelectTrigger><SelectValue placeholder="Select asset..." /></SelectTrigger>
-                <SelectContent>
-                  {assets.map((a: any) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.assetTag} — {a.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="relative">
+                <Input
+                  placeholder="Search by name or asset tag…"
+                  value={assetSearch}
+                  onChange={(e) => {
+                    setAssetSearch(e.target.value);
+                    setSelectedAssetId(undefined);
+                    setValue('assetId', undefined);
+                    setAssetDropOpen(true);
+                  }}
+                  onFocus={() => setAssetDropOpen(true)}
+                  className={selectedAssetId ? 'border-primary' : ''}
+                />
+                {assetDropOpen && assets.length > 0 && (
+                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-zinc-900 border rounded-md shadow-md max-h-52 overflow-y-auto">
+                    {assets.map((a: any) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setSelectedAssetId(a.id);
+                          setValue('assetId', a.id);
+                          setAssetSearch(`${a.assetTag} — ${a.name}`);
+                          setAssetDropOpen(false);
+                        }}
+                      >
+                        <span className="font-mono text-xs text-muted-foreground w-20 shrink-0">{a.assetTag}</span>
+                        <span className="truncate">{a.name}</span>
+                        {a.type && <span className="text-xs text-muted-foreground capitalize ml-auto shrink-0">{a.type.replace(/_/g, ' ')}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {assetDropOpen && assetSearch && assets.length === 0 && (
+                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-zinc-900 border rounded-md shadow-md px-3 py-2 text-sm text-muted-foreground">
+                    No assets found
+                  </div>
+                )}
+              </div>
               {errors.assetId && <p className="text-xs text-destructive">{errors.assetId.message}</p>}
             </div>
           ) : (
@@ -118,30 +159,32 @@ function MountModal({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Position */}
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label>Start U *</Label>
-              <Input
-                type="number"
-                min={1}
-                max={totalU}
-                {...register('startU', { valueAsNumber: true })}
-              />
+              <Input type="number" min={1} max={totalU} {...register('startU', { valueAsNumber: true })} />
               {errors.startU && <p className="text-xs text-destructive">{errors.startU.message}</p>}
             </div>
             <div className="space-y-1.5">
               <Label>End U *</Label>
-              <Input
-                type="number"
-                min={startU || 1}
-                max={totalU}
-                {...register('endU', { valueAsNumber: true })}
-              />
+              <Input type="number" min={startU || 1} max={totalU} {...register('endU', { valueAsNumber: true })} />
               {errors.endU && <p className="text-xs text-destructive">{errors.endU.message}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Face *</Label>
+              <Select value={face ?? 'both'} onValueChange={(v) => setValue('face', v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="both">Both</SelectItem>
+                  <SelectItem value="front">Front</SelectItem>
+                  <SelectItem value="back">Back</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <p className="text-xs text-muted-foreground -mt-2">
-            Rack is {totalU}U total. Size = End U − Start U + 1.
+            {totalU}U rack. "Both" = full-depth device. "Front"/"Back" = half-depth, allows different device on opposite face.
           </p>
 
           <div className="space-y-1.5">
@@ -171,109 +214,150 @@ function MountModal({
 
 // ── Rack diagram ──────────────────────────────────────────────────────────────
 
+function MountCell({
+  mount, isAdmin, onEdit, onRemove, colSpan = 1,
+}: {
+  mount: RackMountResponse;
+  isAdmin: boolean;
+  onEdit: (m: RackMountResponse) => void;
+  onRemove: (m: RackMountResponse) => void;
+  colSpan?: number;
+}) {
+  const navigate = useNavigate();
+  const label = mount.asset ? `${mount.asset.assetTag} — ${mount.asset.name}` : (mount.label ?? '');
+  const ip = mount.asset?.specs?.ipAddress || mount.asset?.network?.ipAddress;
+  const colour = typeColour(mount.asset?.type);
+  const span = mount.endU - mount.startU + 1;
+
+  return (
+    <td
+      rowSpan={span}
+      colSpan={colSpan}
+      className={`px-2 border-b border-muted/50 align-middle cursor-pointer group ${colour} border`}
+      style={{ height: `${span * 28}px` }}
+      onClick={() => mount.asset && navigate(`/assets/${mount.asset.id}`)}
+    >
+      <div className="flex items-center justify-between gap-1 py-0.5">
+        <div className="min-w-0">
+          <div className="font-medium text-xs truncate leading-tight">{label}</div>
+          <div className="flex items-center gap-2 text-xs opacity-75 leading-tight">
+            {mount.asset?.type && <span className="capitalize">{mount.asset.type.replace(/_/g, ' ')}</span>}
+            {ip && <span className="font-mono">{ip}</span>}
+            {span > 1 && <span>U{mount.startU}–{mount.endU}</span>}
+          </div>
+        </div>
+        {isAdmin && (
+          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={(e) => e.stopPropagation()}>
+            <button className="rounded p-0.5 hover:bg-white/20" onClick={() => onEdit(mount)}>
+              <Pencil className="h-2.5 w-2.5" />
+            </button>
+            <button className="rounded p-0.5 hover:bg-white/20" onClick={() => onRemove(mount)}>
+              <Trash2 className="h-2.5 w-2.5" />
+            </button>
+          </div>
+        )}
+      </div>
+    </td>
+  );
+}
+
+function EmptyCell({ u, face, isAdmin, onClick }: {
+  u: number;
+  face: 'front' | 'back' | 'both';
+  isAdmin: boolean;
+  onClick: (u: number, face: 'front' | 'back' | 'both') => void;
+}) {
+  return (
+    <td
+      colSpan={face === 'both' ? 2 : 1}
+      className={`border-b border-muted/30 h-7 ${isAdmin ? 'cursor-pointer hover:bg-slate-700/50 group' : ''}`}
+      onClick={() => isAdmin && onClick(u, face)}
+    >
+      {isAdmin && (
+        <span className="hidden group-hover:inline-flex items-center gap-1 px-2 text-xs text-slate-400">
+          <Plus className="h-2.5 w-2.5" />
+          {face === 'both' ? `U${u}` : `U${u} ${face}`}
+        </span>
+      )}
+    </td>
+  );
+}
+
 function RackDiagram({
   rack, isAdmin, onClickEmpty, onEdit, onRemove,
 }: {
   rack: RackResponse;
   isAdmin: boolean;
-  onClickEmpty: (u: number) => void;
+  onClickEmpty: (u: number, face: 'front' | 'back' | 'both') => void;
   onEdit: (mount: RackMountResponse) => void;
   onRemove: (mount: RackMountResponse) => void;
 }) {
-  const navigate = useNavigate();
+  // Index mounts by face and startU
+  const frontByU = new Map<number, RackMountResponse>();
+  const backByU = new Map<number, RackMountResponse>();
 
-  // Build a map: uPosition → mount (only for startU row)
-  const mountByStart = new Map<number, RackMountResponse>();
-  const occupiedUs = new Set<number>();
+  // Track which U rows have cells already emitted via rowspan
+  const frontCovered = new Set<number>();
+  const backCovered = new Set<number>();
 
   for (const m of rack.mounts) {
-    mountByStart.set(m.startU, m);
-    for (let u = m.startU; u <= m.endU; u++) occupiedUs.add(u);
+    const face = m.face ?? 'both';
+    if (face === 'front' || face === 'both') frontByU.set(m.startU, m);
+    if (face === 'back'  || face === 'both') backByU.set(m.startU, m);
+    // Mark rows covered by rowspan (all rows after startU)
+    for (let u = m.startU + 1; u <= m.endU; u++) {
+      if (face === 'front' || face === 'both') frontCovered.add(u);
+      if (face === 'back'  || face === 'both') backCovered.add(u);
+    }
   }
 
   const rows: React.ReactNode[] = [];
 
   for (let u = 1; u <= rack.totalU; u++) {
-    if (occupiedUs.has(u) && !mountByStart.has(u)) continue; // covered by a rowspan
+    const fm = frontByU.get(u);
+    const bm = backByU.get(u);
+    const fc = frontCovered.has(u);
+    const bc = backCovered.has(u);
 
-    const mount = mountByStart.get(u);
-    const span = mount ? mount.endU - mount.startU + 1 : 1;
+    // If both front and back are covered by rowspan, skip this row entirely
+    if (fc && bc) continue;
 
-    if (mount) {
-      const label = mount.asset
-        ? `${mount.asset.assetTag} — ${mount.asset.name}`
-        : (mount.label ?? '');
-      const ip = mount.asset?.specs?.ipAddress || mount.asset?.network?.ipAddress;
-      const colour = typeColour(mount.asset?.type);
+    // Determine if both columns have the same 'both' mount starting here
+    const isBothMount = fm && bm && fm.id === bm.id;
 
-      rows.push(
-        <tr key={u}>
-          {/* U number column */}
-          <td className="w-10 text-center text-xs text-muted-foreground font-mono border-r border-muted py-0 select-none align-middle">
-            {u}
-          </td>
-          {/* Device cell spanning multiple rows */}
-          <td
-            rowSpan={span}
-            className={`px-3 border-b border-muted/50 align-middle cursor-pointer group ${colour} border`}
-            style={{ height: `${span * 28}px` }}
-            onClick={() => mount.asset && navigate(`/assets/${mount.asset.id}`)}
-          >
-            <div className="flex items-center justify-between gap-2 py-1">
-              <div className="min-w-0">
-                <div className="font-medium text-sm truncate">{label}</div>
-                <div className="flex items-center gap-3 text-xs opacity-80">
-                  {mount.asset?.type && <span className="capitalize">{mount.asset.type.replace(/_/g, ' ')}</span>}
-                  {ip && <span className="font-mono">{ip}</span>}
-                  {mount.asset?.manufacturer && <span>{mount.asset.manufacturer}</span>}
-                  {span > 1 && <span>U{mount.startU}–U{mount.endU}</span>}
-                </div>
-              </div>
-              {isAdmin && (
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    className="rounded p-1 hover:bg-white/20"
-                    onClick={() => onEdit(mount)}
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </button>
-                  <button
-                    className="rounded p-1 hover:bg-white/20"
-                    onClick={() => onRemove(mount)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </td>
-        </tr>,
-      );
-    } else {
-      rows.push(
-        <tr
-          key={u}
-          className={`group ${isAdmin ? 'cursor-pointer hover:bg-muted/40' : ''}`}
-          onClick={() => isAdmin && onClickEmpty(u)}
-        >
-          <td className="w-10 text-center text-xs text-muted-foreground font-mono border-r border-muted select-none">
-            {u}
-          </td>
-          <td className="border-b border-muted/30 h-7">
-            {isAdmin && (
-              <span className="hidden group-hover:inline-flex items-center gap-1 px-3 text-xs text-muted-foreground">
-                <Plus className="h-3 w-3" /> Mount device at U{u}
-              </span>
+    rows.push(
+      <tr key={u}>
+        {/* U number — only show if not fully covered */}
+        <td className="w-8 text-center text-xs text-slate-500 font-mono border-r border-slate-700 select-none align-middle py-0">
+          {u}
+        </td>
+
+        {isBothMount ? (
+          // Single full-depth device spanning both columns
+          <MountCell mount={fm!} isAdmin={isAdmin} onEdit={onEdit} onRemove={onRemove} colSpan={2} />
+        ) : (
+          <>
+            {/* Front column */}
+            {!fc && (
+              fm
+                ? <MountCell mount={fm} isAdmin={isAdmin} onEdit={onEdit} onRemove={onRemove} />
+                : <EmptyCell u={u} face="front" isAdmin={isAdmin} onClick={onClickEmpty} />
             )}
-          </td>
-        </tr>,
-      );
-    }
+            {/* Back column */}
+            {!bc && (
+              bm
+                ? <MountCell mount={bm} isAdmin={isAdmin} onEdit={onEdit} onRemove={onRemove} />
+                : <EmptyCell u={u} face="back" isAdmin={isAdmin} onClick={onClickEmpty} />
+            )}
+          </>
+        )}
+      </tr>,
+    );
   }
 
   return (
     <div className="overflow-hidden rounded-lg border border-slate-700 bg-slate-900 shadow-xl">
-      {/* Rack top */}
+      {/* Header */}
       <div className="bg-slate-800 border-b border-slate-700 px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.8)]" />
@@ -282,14 +366,29 @@ function RackDiagram({
         <span className="text-xs text-slate-400 font-mono">{rack.totalU}U</span>
       </div>
 
+      {/* Column headers */}
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="bg-slate-800/60 border-b border-slate-700">
+            <th className="w-8 text-xs text-slate-500 font-normal py-1 border-r border-slate-700">U</th>
+            <th className="text-xs text-slate-400 font-medium py-1 w-1/2 border-r border-slate-700/50">FRONT</th>
+            <th className="text-xs text-slate-400 font-medium py-1 w-1/2">BACK</th>
+          </tr>
+        </thead>
+      </table>
+
       {/* U rows */}
       <div className="overflow-y-auto" style={{ maxHeight: '70vh' }}>
         <table className="w-full border-collapse">
+          <colgroup>
+            <col className="w-8" />
+            <col className="w-[46%]" />
+            <col className="w-[46%]" />
+          </colgroup>
           <tbody>{rows}</tbody>
         </table>
       </div>
 
-      {/* Rack bottom */}
       <div className="bg-slate-800 border-t border-slate-700 h-4" />
     </div>
   );
@@ -306,6 +405,7 @@ export function RackDetailPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [preStartU, setPreStartU] = useState<number | undefined>();
+  const [preFace, setPreFace] = useState<'front' | 'back' | 'both'>('both');
   const [editingMount, setEditingMount] = useState<RackMountResponse | undefined>();
 
   const { data: rack, isLoading } = useQuery({
@@ -319,9 +419,10 @@ export function RackDetailPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['racks', id] }),
   });
 
-  function openEmpty(u: number) {
+  function openEmpty(u: number, face: 'front' | 'back' | 'both') {
     setEditingMount(undefined);
     setPreStartU(u);
+    setPreFace(face);
     setModalOpen(true);
   }
 
@@ -348,7 +449,12 @@ export function RackDetailPage() {
 
   if (!rack) return <div>Rack not found.</div>;
 
-  const usedU = rack.mounts.reduce((sum: number, m: RackMountResponse) => sum + (m.endU - m.startU + 1), 0);
+  // Count unique U positions used (front+back at same U = 1 used U)
+  const usedUSet = new Set<number>();
+  for (const m of rack.mounts) {
+    for (let u = m.startU; u <= m.endU; u++) usedUSet.add(u);
+  }
+  const usedU = usedUSet.size;
 
   return (
     <div className="space-y-4 max-w-3xl">
@@ -365,7 +471,7 @@ export function RackDetailPage() {
           </p>
         </div>
         {isAdmin && (
-          <Button size="sm" onClick={() => { setEditingMount(undefined); setPreStartU(undefined); setModalOpen(true); }} className="gap-1.5">
+          <Button size="sm" onClick={() => { setEditingMount(undefined); setPreStartU(undefined); setPreFace('both'); setModalOpen(true); }} className="gap-1.5">
             <Plus className="h-4 w-4" /> Mount Device
           </Button>
         )}
@@ -388,18 +494,13 @@ export function RackDetailPage() {
         onRemove={handleRemove}
       />
 
-      {rack.mounts.length === 0 && (
-        <p className="text-sm text-center text-muted-foreground py-4">
-          {isAdmin ? 'Click any U row to mount a device.' : 'No devices mounted yet.'}
-        </p>
-      )}
-
       <MountModal
         open={modalOpen}
         onClose={() => { setModalOpen(false); setEditingMount(undefined); setPreStartU(undefined); }}
         rackId={id!}
         totalU={rack.totalU}
         preStartU={preStartU}
+        preFace={preFace}
         editing={editingMount}
       />
     </div>

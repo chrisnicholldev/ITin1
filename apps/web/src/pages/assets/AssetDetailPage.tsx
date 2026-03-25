@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Pencil, X, Check, Loader2, ExternalLink, Plus, Trash2, KeyRound, Server, User } from 'lucide-react';
+import { ArrowLeft, Pencil, X, Check, Loader2, ExternalLink, Plus, Trash2, KeyRound, Server, User, Globe } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { getUsers } from '@/api/users';
 import { getTickets } from '@/api/tickets';
 import { listCredentials, deleteCredential } from '@/api/vault';
 import { getMountsByAsset } from '@/api/racks';
+import { getNetworks } from '@/api/networks';
 import { UpdateAssetSchema, AssetType, AssetStatus, type UpdateAssetInput, type CredentialResponse } from '@itdesk/shared';
 import { PasswordCell } from '@/components/vault/PasswordCell';
 import { CredentialModal } from '@/components/vault/CredentialModal';
@@ -87,6 +88,12 @@ export function AssetDetailPage() {
     queryKey: ['vault', 'asset', id],
     queryFn: () => listCredentials(id!),
     enabled: !!id,
+  });
+
+  const { data: networks = [] } = useQuery<any[]>({
+    queryKey: ['networks'],
+    queryFn: () => getNetworks(),
+    enabled: editing,
   });
 
   const { mutate: doDeleteCred } = useMutation({
@@ -189,6 +196,24 @@ export function AssetDetailPage() {
                     <SelectItem value="none">Unassigned</SelectItem>
                     {users.map((u) => (
                       <SelectItem key={u.id} value={u.id}>{u.displayName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Network</Label>
+                <Select
+                  defaultValue={(asset as any).linkedNetwork?.id ?? 'none'}
+                  onValueChange={(v) => setValue('networkId' as any, v === 'none' ? undefined : v)}
+                >
+                  <SelectTrigger><SelectValue placeholder="No network" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No network</SelectItem>
+                    {networks.map((n: any) => (
+                      <SelectItem key={n.id} value={n.id}>
+                        {n.name} — {n.address}{n.vlanId ? ` (VLAN ${n.vlanId})` : ''}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -468,6 +493,32 @@ export function AssetDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Linked network */}
+            {(asset as any).linkedNetwork && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5" /> Network
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Link
+                    to={`/network/networks`}
+                    className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 hover:border-primary transition-colors"
+                  >
+                    <div>
+                      <p className="text-xs font-medium">{(asset as any).linkedNetwork.name}</p>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {(asset as any).linkedNetwork.address}
+                        {(asset as any).linkedNetwork.vlanId ? ` · VLAN ${(asset as any).linkedNetwork.vlanId}` : ''}
+                      </p>
+                    </div>
+                    <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0" />
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Linked credentials */}
             <Card>

@@ -81,6 +81,7 @@ export const CreateAssetSchema = z.object({
   specs: SpecsSchema,
   license: LicenseSchema,
   network: NetworkSchema,
+  networkId: z.string().optional(),
   notes: z.string().max(5000).optional(),
   customFields: z.record(z.unknown()).default({}),
 });
@@ -104,6 +105,7 @@ export const AssetResponseSchema = z.object({
   specs: SpecsSchema,
   license: LicenseSchema,
   network: NetworkSchema,
+  linkedNetwork: z.object({ id: z.string(), name: z.string(), address: z.string(), vlanId: z.number().optional() }).optional(),
   notes: z.string().optional(),
   externalSource: z.enum([ExternalSource.INTUNE, ExternalSource.MERAKI, ExternalSource.MANUAL]).optional(),
   externalId: z.string().optional(),

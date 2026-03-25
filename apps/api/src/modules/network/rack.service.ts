@@ -22,6 +22,7 @@ function mountToResponse(m: IRackMountDocument) {
     label: m.label,
     startU: m.startU,
     endU: m.endU,
+    face: (m.face ?? 'both') as 'front' | 'back' | 'both',
     notes: m.notes,
   };
 }
@@ -101,15 +102,19 @@ export async function addMount(rackId: string, input: CreateRackMountInput) {
     throw new AppError(400, `U positions must be between 1 and ${rack.totalU}`);
   }
 
-  // Check for overlapping mounts
-  const overlap = await RackMount.findOne({
+  // Check for overlapping mounts — only conflict if they share a face
+  const face = input.face ?? 'both';
+  const facesConflict = (a: string, b: string) =>
+    a === 'both' || b === 'both' || a === b;
+
+  const candidates = await RackMount.find({
     rack: new mongoose.Types.ObjectId(rackId),
-    $or: [
-      { startU: { $lte: input.endU }, endU: { $gte: input.startU } },
-    ],
+    startU: { $lte: input.endU },
+    endU: { $gte: input.startU },
   });
+  const overlap = candidates.find((c) => facesConflict(face, c.face ?? 'both'));
   if (overlap) {
-    throw new AppError(409, `U${input.startU}–U${input.endU} overlaps with an existing mount`);
+    throw new AppError(409, `U${input.startU}–U${input.endU} (${face}) overlaps with an existing mount`);
   }
 
   const mount = await RackMount.create({
@@ -118,6 +123,7 @@ export async function addMount(rackId: string, input: CreateRackMountInput) {
     label: input.label,
     startU: input.startU,
     endU: input.endU,
+    face,
     notes: input.notes,
   }) as IRackMountDocument;
 
@@ -142,20 +148,26 @@ export async function updateMount(rackId: string, mountId: string, input: Partia
     throw new AppError(400, `U positions must be between 1 and ${rack.totalU}`);
   }
 
-  // Check overlaps (excluding this mount)
-  const overlap = await RackMount.findOne({
+  // Check overlaps (excluding this mount), face-aware
+  const newFace = input.face ?? mount.face ?? 'both';
+  const facesConflict = (a: string, b: string) =>
+    a === 'both' || b === 'both' || a === b;
+
+  const candidates = await RackMount.find({
     rack: new mongoose.Types.ObjectId(rackId),
     _id: { $ne: new mongoose.Types.ObjectId(mountId) },
     startU: { $lte: newEnd },
     endU: { $gte: newStart },
   });
+  const overlap = candidates.find((c) => facesConflict(newFace, c.face ?? 'both'));
   if (overlap) {
-    throw new AppError(409, `U${newStart}–U${newEnd} overlaps with an existing mount`);
+    throw new AppError(409, `U${newStart}–U${newEnd} (${newFace}) overlaps with an existing mount`);
   }
 
   const updates: Record<string, unknown> = {};
   if (input.startU !== undefined) updates['startU'] = input.startU;
   if (input.endU !== undefined) updates['endU'] = input.endU;
+  if (input.face !== undefined) updates['face'] = input.face;
   if (input.label !== undefined) updates['label'] = input.label;
   if (input.notes !== undefined) updates['notes'] = input.notes;
 

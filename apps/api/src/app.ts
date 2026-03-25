@@ -17,6 +17,7 @@ import assetRoutes from './modules/assets/asset.routes.js';
 import categoryRoutes from './modules/categories/category.routes.js';
 import vaultRoutes from './modules/vault/vault.routes.js';
 import rackRoutes from './modules/network/rack.routes.js';
+import networkRoutes from './modules/network/network.routes.js';
 import intuneRoutes from './modules/integrations/intune/intune.routes.js';
 import contactRoutes from './modules/contacts/contact.routes.js';
 import locationRoutes from './modules/locations/location.routes.js';
@@ -56,6 +57,7 @@ export function createApp(): Express {
   v1.use('/categories', categoryRoutes);
   v1.use('/vault', vaultRoutes);
   v1.use('/network/racks', rackRoutes);
+  v1.use('/network/networks', networkRoutes);
   v1.use('/integrations/intune', intuneRoutes);
   v1.use('/contacts', contactRoutes);
   v1.use('/locations', locationRoutes);

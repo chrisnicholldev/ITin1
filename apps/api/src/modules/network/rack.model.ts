@@ -35,6 +35,7 @@ export interface IRackMount {
   label?: string;
   startU: number;
   endU: number;
+  face: 'front' | 'back' | 'both';
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -49,6 +50,7 @@ const rackMountSchema = new mongoose.Schema<IRackMountDocument>(
     label: String,
     startU: { type: Number, required: true },
     endU: { type: Number, required: true },
+    face: { type: String, enum: ['front', 'back', 'both'], default: 'both' },
     notes: String,
   },
   { timestamps: true },

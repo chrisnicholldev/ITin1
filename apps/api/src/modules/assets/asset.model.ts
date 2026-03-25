@@ -38,6 +38,7 @@ export interface IAsset {
     port?: string;
     connectedTo?: mongoose.Types.ObjectId;
   };
+  networkId?: mongoose.Types.ObjectId;
   notes?: string;
   externalSource?: string;
   externalId?: string;
@@ -87,6 +88,7 @@ const assetSchema = new mongoose.Schema<IAssetDocument>(
       port: String,
       connectedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset' },
     },
+    networkId: { type: mongoose.Schema.Types.ObjectId, ref: 'Network' },
     notes: String,
     externalSource: { type: String, enum: Object.values(ExternalSource) },
     externalId: String,
@@ -99,6 +101,7 @@ const assetSchema = new mongoose.Schema<IAssetDocument>(
 assetSchema.index({ type: 1 });
 assetSchema.index({ status: 1 });
 assetSchema.index({ assignedTo: 1 });
+assetSchema.index({ networkId: 1 });
 assetSchema.index({ externalSource: 1, externalId: 1 });
 
 

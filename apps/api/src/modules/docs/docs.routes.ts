@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { Router, type IRouter } from 'express';
 import * as c from './docs.controller.js';
 import { requireAuth, requireAdmin } from '../../middleware/auth.middleware.js';
 
-const router = Router();
+const router: IRouter = Router();
 router.use(requireAuth);
 
 // Folders
