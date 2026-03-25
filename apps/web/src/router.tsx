@@ -12,6 +12,7 @@ import { VaultPage } from '@/pages/vault/VaultPage';
 import { RacksPage } from '@/pages/network/RacksPage';
 import { RackDetailPage } from '@/pages/network/RackDetailPage';
 import { UsersPage } from '@/pages/admin/UsersPage';
+import { IntegrationsPage } from '@/pages/admin/IntegrationsPage';
 
 export const router = createBrowserRouter(
   [
@@ -35,6 +36,7 @@ export const router = createBrowserRouter(
         { path: 'network/racks', element: <RacksPage /> },
         { path: 'network/racks/:id', element: <RackDetailPage /> },
         { path: 'admin/users', element: <UsersPage /> },
+        { path: 'admin/integrations', element: <IntegrationsPage /> },
         { path: 'admin/settings', element: <div className="p-4 text-muted-foreground">Settings — coming soon</div> },
       ],
     },

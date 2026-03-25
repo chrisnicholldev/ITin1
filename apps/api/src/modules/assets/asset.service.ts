@@ -40,6 +40,7 @@ const ListQuerySchema = z.object({
   type: z.string().optional(),
   status: z.string().optional(),
   assignedTo: z.string().optional(),
+  externalSource: z.string().optional(),
   search: z.string().optional(),
 });
 
@@ -50,6 +51,11 @@ export async function listAssets(rawQuery: unknown) {
   if (query.type) filter['type'] = query.type;
   if (query.status) filter['status'] = query.status;
   if (query.assignedTo) filter['assignedTo'] = new mongoose.Types.ObjectId(query.assignedTo);
+  if (query.externalSource === 'manual') {
+    filter['externalSource'] = { $exists: false };
+  } else if (query.externalSource) {
+    filter['externalSource'] = query.externalSource;
+  }
   if (query.search) {
     filter['$or'] = [
       { name: { $regex: query.search, $options: 'i' } },

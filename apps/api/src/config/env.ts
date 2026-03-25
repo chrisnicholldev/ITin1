@@ -33,6 +33,12 @@ const EnvSchema = z.object({
 
   VAULT_ENCRYPTION_KEY: z.string().length(64, 'VAULT_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)'),
 
+  INTUNE_ENABLED: z.coerce.boolean().default(false),
+  INTUNE_TENANT_ID: z.string().optional(),
+  INTUNE_CLIENT_ID: z.string().optional(),
+  INTUNE_CLIENT_SECRET: z.string().optional(),
+  INTUNE_SYNC_SCHEDULE: z.string().default('0 * * * *'),
+
   UPLOAD_DIR: z.string().default('./uploads'),
   MAX_FILE_SIZE_MB: z.coerce.number().default(25),
 });

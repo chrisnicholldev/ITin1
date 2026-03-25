@@ -4,6 +4,7 @@ import { connectDatabase, disconnectDatabase } from './config/database.js';
 import { redis } from './config/redis.js';
 import { initJwt } from './config/jwt.js';
 import { bootstrapSuperAdmin } from './modules/auth/auth.service.js';
+import { startWorkers, stopWorkers } from './jobs/queues.js';
 import { createApp } from './app.js';
 
 async function main() {
@@ -18,6 +19,9 @@ async function main() {
   // Bootstrap
   await bootstrapSuperAdmin();
 
+  // Start background workers
+  await startWorkers();
+
   // Start server
   const app = createApp();
   const server = app.listen(env.PORT, () => {
@@ -27,6 +31,7 @@ async function main() {
   // Graceful shutdown
   const shutdown = async (signal: string) => {
     console.log(`[server] ${signal} received — shutting down`);
+    await stopWorkers();
     server.close(async () => {
       await disconnectDatabase();
       await redis.quit();

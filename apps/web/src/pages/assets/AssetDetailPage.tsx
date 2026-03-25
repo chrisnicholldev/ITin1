@@ -331,6 +331,28 @@ export function AssetDetailPage() {
               </Card>
             )}
 
+            {asset.externalSource === 'intune' && asset.customFields && (
+              <Card>
+                <CardHeader><CardTitle className="text-base">Azure AD / Intune Details</CardTitle></CardHeader>
+                <CardContent>
+                  <DetailRow label="Assigned User" value={asset.customFields.assignedUserName as string} />
+                  <DetailRow label="User Email" value={asset.customFields.assignedUserEmail as string} />
+                  <DetailRow label="UPN" value={asset.customFields.assignedUserUPN as string} />
+                  <DetailRow label="Compliant" value={asset.customFields.isCompliant as string} />
+                  <DetailRow label="Managed" value={asset.customFields.isManaged as string} />
+                  <DetailRow label="Trust Type" value={asset.customFields.trustType as string} />
+                  <DetailRow
+                    label="Registered"
+                    value={asset.customFields.registeredAt ? new Date(asset.customFields.registeredAt as string).toLocaleDateString() : null}
+                  />
+                  <DetailRow
+                    label="Last Sign-in"
+                    value={asset.customFields.lastSignIn ? new Date(asset.customFields.lastSignIn as string).toLocaleString() : null}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
             {asset.notes && (
               <Card>
                 <CardHeader><CardTitle className="text-base">Notes</CardTitle></CardHeader>
@@ -358,6 +380,12 @@ export function AssetDetailPage() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Source</span>
                     <span className="capitalize">{asset.externalSource}</span>
+                  </div>
+                )}
+                {asset.lastSyncedAt && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Last synced</span>
+                    <span>{new Date(asset.lastSyncedAt).toLocaleString()}</span>
                   </div>
                 )}
               </CardContent>

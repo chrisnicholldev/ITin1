@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getAssets } from '@/api/assets';
-import { AssetType, AssetStatus } from '@itdesk/shared';
+import { AssetType, AssetStatus, ExternalSource } from '@itdesk/shared';
 
 const statusVariant: Record<string, string> = {
   active: 'success',
@@ -18,19 +18,32 @@ const statusVariant: Record<string, string> = {
   in_stock: 'info',
 };
 
+const SOURCE_LABELS: Record<string, string> = {
+  intune: 'Intune',
+  meraki: 'Meraki',
+  manual: 'Manual',
+};
+
+const SOURCE_COLOURS: Record<string, string> = {
+  intune: 'bg-blue-100 text-blue-800',
+  meraki: 'bg-orange-100 text-orange-800',
+};
+
 export function AssetsPage() {
   const [search, setSearch] = useState('');
   const [type, setType] = useState('');
   const [status, setStatus] = useState('');
+  const [source, setSource] = useState('');
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['assets', { search, type, status, page }],
+    queryKey: ['assets', { search, type, status, source, page }],
     queryFn: () =>
       getAssets({
         ...(search && { search }),
         ...(type && { type }),
         ...(status && { status }),
+        ...(source && { externalSource: source }),
         page,
         limit: 25,
       }),
@@ -86,6 +99,18 @@ export function AssetsPage() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={source} onValueChange={(v) => { setSource(v === 'all' ? '' : v); setPage(1); }}>
+          <SelectTrigger className="w-36">
+            <SelectValue placeholder="Source" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All sources</SelectItem>
+            <SelectItem value="manual">Manual</SelectItem>
+            {Object.values(ExternalSource).filter(s => s !== 'manual').map((s) => (
+              <SelectItem key={s} value={s}>{SOURCE_LABELS[s] ?? s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Card>
@@ -105,9 +130,10 @@ export function AssetsPage() {
                 type: string;
                 status: string;
                 manufacturer?: string;
-                model?: string;
+                modelName?: string;
                 assignedTo?: { displayName: string };
                 location?: string;
+                externalSource?: string;
               }) => (
                 <Link
                   key={asset.id}
@@ -120,11 +146,16 @@ export function AssetsPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{asset.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {[asset.manufacturer, asset.model].filter(Boolean).join(' ') || asset.type.replace('_', ' ')}
+                      {[asset.manufacturer, asset.modelName].filter(Boolean).join(' ') || asset.type.replace('_', ' ')}
                       {asset.location && ` · ${asset.location}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    {asset.externalSource && SOURCE_COLOURS[asset.externalSource] && (
+                      <span className={`hidden sm:inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${SOURCE_COLOURS[asset.externalSource]}`}>
+                        {SOURCE_LABELS[asset.externalSource] ?? asset.externalSource}
+                      </span>
+                    )}
                     <Badge variant="outline">{asset.type.replace('_', ' ')}</Badge>
                     <Badge variant={(statusVariant[asset.status] as 'default') ?? 'secondary'}>
                       {asset.status.replace('_', ' ')}

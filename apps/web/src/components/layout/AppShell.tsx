@@ -10,6 +10,7 @@ import {
   Network,
   Users,
   Settings,
+  Plug,
   LogOut,
   Menu,
   X,
@@ -24,6 +25,7 @@ const navItems = [
   { href: '/vault', label: 'Vault', icon: Shield, minRole: 'it_technician' },
   { href: '/network/racks', label: 'Network', icon: Network, minRole: 'it_technician' },
   { href: '/admin/users', label: 'Users', icon: Users, minRole: 'it_admin' },
+  { href: '/admin/integrations', label: 'Integrations', icon: Plug, minRole: 'it_admin' },
   { href: '/admin/settings', label: 'Settings', icon: Settings, minRole: 'it_admin' },
 ];
 
