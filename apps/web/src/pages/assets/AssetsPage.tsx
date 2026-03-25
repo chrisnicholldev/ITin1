@@ -29,15 +29,23 @@ const SOURCE_COLOURS: Record<string, string> = {
   meraki: 'bg-orange-100 text-orange-800',
 };
 
+function getPageNumbers(current: number, total: number): (number | '...')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  if (current <= 4) return [1, 2, 3, 4, 5, '...', total];
+  if (current >= total - 3) return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+  return [1, '...', current - 1, current, current + 1, '...', total];
+}
+
 export function AssetsPage() {
   const [search, setSearch] = useState('');
   const [type, setType] = useState('');
   const [status, setStatus] = useState('');
   const [source, setSource] = useState('');
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['assets', { search, type, status, source, page }],
+    queryKey: ['assets', { search, type, status, source, page, limit }],
     queryFn: () =>
       getAssets({
         ...(search && { search }),
@@ -45,7 +53,7 @@ export function AssetsPage() {
         ...(status && { status }),
         ...(source && { externalSource: source }),
         page,
-        limit: 25,
+        limit,
       }),
   });
 
@@ -57,7 +65,7 @@ export function AssetsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Assets</h1>
-          {meta && <p className="text-sm text-muted-foreground">{meta.total} total</p>}
+          <p className="text-sm text-muted-foreground">Assets</p>
         </div>
         <Button asChild>
           <Link to="/assets/new">
@@ -142,8 +150,9 @@ export function AssetsPage() {
                 status: string;
                 manufacturer?: string;
                 modelName?: string;
-                assignedTo?: { displayName: string };
-                assignedContact?: { displayName: string };
+                assignedTo?: { displayName: string; email: string };
+                assignedContact?: { displayName: string; email: string };
+                customFields?: Record<string, unknown>;
                 location?: string;
                 externalSource?: string;
               }) => (
@@ -173,7 +182,7 @@ export function AssetsPage() {
                       {asset.status.replace('_', ' ')}
                     </Badge>
                     <span className="text-xs text-muted-foreground w-36 truncate hidden lg:block text-right">
-                      {asset.assignedTo?.displayName ?? asset.assignedContact?.displayName ?? '—'}
+                      {asset.assignedTo?.email ?? asset.assignedContact?.email ?? (asset.customFields?.assignedUserEmail as string) ?? '—'}
                     </span>
                   </div>
                 </Link>
@@ -183,24 +192,47 @@ export function AssetsPage() {
         </CardContent>
       </Card>
 
-      {meta && meta.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Page {meta.page} of {meta.totalPages}
-          </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= meta.totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
+      {meta && (
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Rows per page:</span>
+            <Select value={String(limit)} onValueChange={(v) => { setLimit(Number(v)); setPage(1); }}>
+              <SelectTrigger className="w-20 h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[25, 50, 100].map((n) => (
+                  <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span>{meta.total} total</span>
           </div>
+          {meta.totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                Previous
+              </Button>
+              {getPageNumbers(page, meta.totalPages).map((p, i) =>
+                p === '...' ? (
+                  <span key={`ellipsis-${i}`} className="px-2 text-muted-foreground text-sm">…</span>
+                ) : (
+                  <Button
+                    key={p}
+                    variant={p === page ? 'default' : 'outline'}
+                    size="sm"
+                    className="w-9"
+                    onClick={() => setPage(p)}
+                  >
+                    {p}
+                  </Button>
+                )
+              )}
+              <Button variant="outline" size="sm" disabled={page >= meta.totalPages} onClick={() => setPage((p) => p + 1)}>
+                Next
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
