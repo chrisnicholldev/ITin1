@@ -115,6 +115,17 @@ export function AssetsPage() {
 
       <Card>
         <CardContent className="p-0">
+          {/* Column headers */}
+          <div className="hidden lg:flex items-center gap-4 px-4 py-2 border-b text-xs text-muted-foreground">
+            <span className="w-24 flex-shrink-0">Tag</span>
+            <span className="flex-1">Name / Model</span>
+            <span className="flex items-center gap-2">
+              <span className="w-20 text-right">Source</span>
+              <span className="w-20 text-right">Type</span>
+              <span className="w-20 text-right">Status</span>
+              <span className="w-36 text-right">Owner</span>
+            </span>
+          </div>
           {isLoading && (
             <div className="p-8 text-center text-muted-foreground text-sm">Loading...</div>
           )}
@@ -161,11 +172,9 @@ export function AssetsPage() {
                     <Badge variant={(statusVariant[asset.status] as 'default') ?? 'secondary'}>
                       {asset.status.replace('_', ' ')}
                     </Badge>
-                    {(asset.assignedTo || asset.assignedContact) && (
-                      <span className="text-xs text-muted-foreground hidden lg:block">
-                        {asset.assignedTo?.displayName ?? asset.assignedContact?.displayName}
-                      </span>
-                    )}
+                    <span className="text-xs text-muted-foreground w-36 truncate hidden lg:block text-right">
+                      {asset.assignedTo?.displayName ?? asset.assignedContact?.displayName ?? '—'}
+                    </span>
                   </div>
                 </Link>
               ),
