@@ -13,6 +13,10 @@ import { RacksPage } from '@/pages/network/RacksPage';
 import { RackDetailPage } from '@/pages/network/RackDetailPage';
 import { UsersPage } from '@/pages/admin/UsersPage';
 import { IntegrationsPage } from '@/pages/admin/IntegrationsPage';
+import { LocationsPage } from '@/pages/admin/LocationsPage';
+import { DocsPage } from '@/pages/docs/DocsPage';
+import { ArticlePage } from '@/pages/docs/ArticlePage';
+import { ArticleEditorPage } from '@/pages/docs/ArticleEditorPage';
 
 export const router = createBrowserRouter(
   [
@@ -35,8 +39,13 @@ export const router = createBrowserRouter(
         { path: 'vault', element: <VaultPage /> },
         { path: 'network/racks', element: <RacksPage /> },
         { path: 'network/racks/:id', element: <RackDetailPage /> },
+        { path: 'docs', element: <DocsPage /> },
+        { path: 'docs/articles/new', element: <ArticleEditorPage /> },
+        { path: 'docs/articles/:slug', element: <ArticlePage /> },
+        { path: 'docs/articles/:slug/edit', element: <ArticleEditorPage /> },
         { path: 'admin/users', element: <UsersPage /> },
         { path: 'admin/integrations', element: <IntegrationsPage /> },
+        { path: 'admin/locations', element: <LocationsPage /> },
         { path: 'admin/settings', element: <div className="p-4 text-muted-foreground">Settings — coming soon</div> },
       ],
     },

@@ -77,6 +77,13 @@ export const CredentialCategory = {
 } as const;
 export type CredentialCategory = (typeof CredentialCategory)[keyof typeof CredentialCategory];
 
+export const VaultAccessLevel = {
+  STAFF: 'staff',
+  ADMIN: 'admin',
+  RESTRICTED: 'restricted',
+} as const;
+export type VaultAccessLevel = (typeof VaultAccessLevel)[keyof typeof VaultAccessLevel];
+
 export const VaultAuditAction = {
   CREATE: 'create',
   UPDATE: 'update',

@@ -1,5 +1,5 @@
 import mongoose, { type Document, type Model } from 'mongoose';
-import { CredentialCategory, VaultAuditAction } from '@itdesk/shared';
+import { CredentialCategory, VaultAccessLevel, VaultAuditAction } from '@itdesk/shared';
 
 // ── Credential ────────────────────────────────────────────────────────────────
 
@@ -15,6 +15,8 @@ export interface ICredential {
   category: string;
   linkedAsset?: mongoose.Types.ObjectId;
   tags: string[];
+  accessLevel: string;
+  allowedUsers: mongoose.Types.ObjectId[];
   createdBy: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -40,6 +42,13 @@ const credentialSchema = new mongoose.Schema<ICredentialDocument>(
     },
     linkedAsset: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset' },
     tags: [{ type: String }],
+    accessLevel: {
+      type: String,
+      enum: Object.values(VaultAccessLevel),
+      default: VaultAccessLevel.STAFF,
+      required: true,
+    },
+    allowedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },

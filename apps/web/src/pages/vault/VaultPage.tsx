@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Shield, ChevronDown, ChevronUp, ClipboardList } from 'lucide-react';
+import { Plus, Pencil, Trash2, Shield, ChevronDown, ChevronUp, ClipboardList, Upload, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { listCredentials, deleteCredential, getAuditLog } from '@/api/vault';
-import { CredentialCategory, type CredentialResponse } from '@itdesk/shared';
+import { listCredentials, deleteCredential, bulkDeleteCredentials, getAuditLog } from '@/api/vault';
+import { CredentialCategory, VaultAccessLevel, type CredentialResponse } from '@itdesk/shared';
 import { useAuthStore } from '@/stores/auth.store';
 import { UserRole } from '@itdesk/shared';
 import { PasswordCell } from '@/components/vault/PasswordCell';
 import { CredentialModal } from '@/components/vault/CredentialModal';
+import { ImportCredentialsModal } from '@/components/vault/ImportCredentialsModal';
 
 const CATEGORY_LABELS: Record<string, string> = {
   service_account: 'Service Account',
@@ -83,9 +84,11 @@ export function VaultPage() {
   const isAdmin = user?.role === UserRole.IT_ADMIN || user?.role === UserRole.SUPER_ADMIN;
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<CredentialResponse | undefined>();
   const [showAudit, setShowAudit] = useState(false);
   const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const queryClient = useQueryClient();
 
@@ -99,8 +102,33 @@ export function VaultPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vault'] }),
   });
 
+  const { mutate: doBulkDelete, isPending: bulkPending } = useMutation({
+    mutationFn: (ids: string[]) => bulkDeleteCredentials(ids),
+    onSuccess: () => {
+      setSelected(new Set());
+      queryClient.invalidateQueries({ queryKey: ['vault'] });
+    },
+  });
+
   function openCreate() { setEditing(undefined); setModalOpen(true); }
   function openEdit(c: CredentialResponse) { setEditing(c); setModalOpen(true); }
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll(items: CredentialResponse[]) {
+    setSelected((prev) => {
+      const allSelected = items.every((c) => prev.has(c.id));
+      const next = new Set(prev);
+      items.forEach((c) => allSelected ? next.delete(c.id) : next.add(c.id));
+      return next;
+    });
+  }
 
   const filtered = (credentials as CredentialResponse[]).filter(
     (c) => !search || c.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -129,6 +157,11 @@ export function VaultPage() {
             </Button>
           )}
           {isAdmin && (
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} className="gap-1.5">
+              <Upload className="h-4 w-4" /> Import
+            </Button>
+          )}
+          {isAdmin && (
             <Button size="sm" onClick={openCreate} className="gap-1.5">
               <Plus className="h-4 w-4" /> Add Credential
             </Button>
@@ -138,12 +171,32 @@ export function VaultPage() {
 
       {showAudit && isAdmin && <AuditPanel />}
 
-      <Input
-        placeholder="Search credentials..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="max-w-sm"
-      />
+      <div className="flex items-center gap-3 flex-wrap">
+        <Input
+          placeholder="Search credentials..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-sm"
+        />
+        {isAdmin && selected.size > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{selected.size} selected</span>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={bulkPending}
+              onClick={() => {
+                if (confirm(`Delete ${selected.size} credential${selected.size !== 1 ? 's' : ''}?`)) {
+                  doBulkDelete(Array.from(selected));
+                }
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              Delete selected
+            </Button>
+          </div>
+        )}
+      </div>
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
@@ -171,18 +224,46 @@ export function VaultPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-muted/40">
+                        {isAdmin && (
+                          <th className="px-3 py-2 w-8">
+                            <input
+                              type="checkbox"
+                              checked={items.every((c) => selected.has(c.id))}
+                              onChange={() => toggleSelectAll(items)}
+                              className="cursor-pointer"
+                            />
+                          </th>
+                        )}
                         <th className="text-left px-4 py-2 font-medium text-muted-foreground w-48">Title</th>
                         <th className="text-left px-4 py-2 font-medium text-muted-foreground w-48">Username</th>
                         <th className="text-left px-4 py-2 font-medium text-muted-foreground">Password</th>
                         <th className="text-left px-4 py-2 font-medium text-muted-foreground">Linked Asset</th>
-                        <th className="px-4 py-2 w-20" />
+                        <th className="px-4 py-2 w-24" />
                       </tr>
                     </thead>
                     <tbody>
                       {items.map((c) => (
-                        <tr key={c.id} className="border-b last:border-0 hover:bg-muted/20">
+                        <tr key={c.id} className={`border-b last:border-0 hover:bg-muted/20 ${selected.has(c.id) ? 'bg-muted/30' : ''}`}>
+                          {isAdmin && (
+                            <td className="px-3 py-2.5 text-center">
+                              <input
+                                type="checkbox"
+                                checked={selected.has(c.id)}
+                                onChange={() => toggleSelect(c.id)}
+                                className="cursor-pointer"
+                              />
+                            </td>
+                          )}
                           <td className="px-4 py-2.5">
-                            <div className="font-medium">{c.title}</div>
+                            <div className="flex items-center gap-1.5">
+                              {c.accessLevel === VaultAccessLevel.RESTRICTED && (
+                                <Lock className="h-3 w-3 text-orange-500 shrink-0" aria-label="Restricted access" />
+                              )}
+                              {c.accessLevel === VaultAccessLevel.ADMIN && (
+                                <Lock className="h-3 w-3 text-blue-500 shrink-0" aria-label="Admin only" />
+                              )}
+                              <span className="font-medium">{c.title}</span>
+                            </div>
                             {c.url && (
                               <a href={c.url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline truncate block max-w-[180px]">
                                 {c.url}
@@ -235,6 +316,7 @@ export function VaultPage() {
         onClose={() => { setModalOpen(false); setEditing(undefined); }}
         editing={editing}
       />
+      <ImportCredentialsModal open={importOpen} onClose={() => setImportOpen(false)} />
     </div>
   );
 }

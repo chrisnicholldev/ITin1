@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { createCredential, updateCredential } from '@/api/vault';
 import { getAssets } from '@/api/assets';
-import { CreateCredentialSchema, CredentialCategory, type CreateCredentialInput, type CredentialResponse } from '@itdesk/shared';
+import { getUsers } from '@/api/users';
+import { CreateCredentialSchema, CredentialCategory, VaultAccessLevel, type CreateCredentialInput, type CredentialResponse } from '@itdesk/shared';
 
 const CATEGORY_LABELS: Record<string, string> = {
   service_account: 'Service Account',
@@ -37,8 +39,17 @@ interface Props {
   preLinkedAssetId?: string;
 }
 
+const ACCESS_LEVEL_LABELS: Record<string, string> = {
+  staff: 'All Staff (techs, admins)',
+  admin: 'Admins Only',
+  restricted: 'Specific Users',
+};
+
 export function CredentialModal({ open, onClose, editing, preLinkedAssetId }: Props) {
   const queryClient = useQueryClient();
+  const [allowedUserIds, setAllowedUserIds] = useState<string[]>(
+    editing?.allowedUsers?.map((u) => u.id) ?? [],
+  );
 
   const { data: assetsData } = useQuery({
     queryKey: ['assets', 'all'],
@@ -46,7 +57,13 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId }: Pr
   });
   const assets: Array<{ id: string; name: string; assetTag: string }> = assetsData?.data ?? [];
 
-  const { register, handleSubmit, setValue, reset, formState: { errors } } = useForm<CreateCredentialInput>({
+  const { data: usersData } = useQuery({
+    queryKey: ['users', 'all'],
+    queryFn: () => getUsers({ limit: 200 }),
+  });
+  const allUsers: Array<{ id: string; displayName: string; email: string }> = usersData?.data ?? [];
+
+  const { register, handleSubmit, setValue, reset, control, formState: { errors } } = useForm<CreateCredentialInput>({
     resolver: zodResolver(CreateCredentialSchema),
     defaultValues: editing
       ? {
@@ -58,23 +75,38 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId }: Pr
           category: editing.category as CreateCredentialInput['category'],
           linkedAsset: editing.linkedAsset?.id ?? preLinkedAssetId ?? '',
           tags: editing.tags,
+          accessLevel: (editing.accessLevel ?? VaultAccessLevel.STAFF) as CreateCredentialInput['accessLevel'],
+          allowedUsers: editing.allowedUsers?.map((u) => u.id) ?? [],
         }
       : {
           category: CredentialCategory.OTHER,
           tags: [],
           linkedAsset: preLinkedAssetId ?? '',
+          accessLevel: VaultAccessLevel.STAFF,
+          allowedUsers: [],
         },
   });
 
+  const accessLevel = useWatch({ control, name: 'accessLevel' });
+
   const { mutate, isPending } = useMutation({
-    mutationFn: (data: CreateCredentialInput) =>
-      editing ? updateCredential(editing.id, data) : createCredential(data),
+    mutationFn: (data: CreateCredentialInput) => {
+      const payload = { ...data, allowedUsers: allowedUserIds };
+      return editing ? updateCredential(editing.id, payload) : createCredential(payload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vault'] });
       reset();
+      setAllowedUserIds([]);
       onClose();
     },
   });
+
+  function toggleUser(id: string) {
+    setAllowedUserIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
 
   const defaultAssetValue = editing?.linkedAsset?.id ?? preLinkedAssetId ?? 'none';
 
@@ -136,6 +168,44 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId }: Pr
           <Field label="Notes">
             <Textarea rows={3} placeholder="e.g. iDRAC management interface for rack unit 3" {...register('notes')} />
           </Field>
+
+          <Field label="Access Level">
+            <Select
+              defaultValue={editing?.accessLevel ?? VaultAccessLevel.STAFF}
+              onValueChange={(v) => setValue('accessLevel', v as CreateCredentialInput['accessLevel'])}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(ACCESS_LEVEL_LABELS).map(([v, l]) => (
+                  <SelectItem key={v} value={v}>{l}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          {accessLevel === VaultAccessLevel.RESTRICTED && (
+            <Field label="Allowed Users">
+              <div className="border rounded max-h-40 overflow-y-auto divide-y">
+                {allUsers.length === 0 && (
+                  <p className="text-xs text-muted-foreground p-2">No users found.</p>
+                )}
+                {allUsers.map((u) => (
+                  <label key={u.id} className="flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer hover:bg-muted/50">
+                    <input
+                      type="checkbox"
+                      checked={allowedUserIds.includes(u.id)}
+                      onChange={() => toggleUser(u.id)}
+                    />
+                    <span className="flex-1">{u.displayName}</span>
+                    <span className="text-xs text-muted-foreground">{u.email}</span>
+                  </label>
+                ))}
+              </div>
+              {allowedUserIds.length > 0 && (
+                <p className="text-xs text-muted-foreground">{allowedUserIds.length} user{allowedUserIds.length !== 1 ? 's' : ''} selected</p>
+              )}
+            </Field>
+          )}
 
           <DialogFooter>
             <DialogClose asChild>

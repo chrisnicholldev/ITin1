@@ -13,8 +13,10 @@ router.get('/audit', requireAdmin, c.getAuditLog);
 // Credential CRUD
 router.get('/', c.listCredentials);
 router.post('/', requireAdmin, c.createCredential);
+router.post('/import', requireAdmin, c.importCredentials);
 router.get('/:id', c.getCredential);
 router.patch('/:id', requireAdmin, c.updateCredential);
+router.delete('/', requireAdmin, c.bulkDeleteCredentials);
 router.delete('/:id', requireAdmin, c.deleteCredential);
 
 // Reveal / copy (all techs+)

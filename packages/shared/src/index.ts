@@ -10,3 +10,5 @@ export * from './schemas/category.schema.js';
 export * from './schemas/pagination.schema.js';
 export * from './schemas/vault.schema.js';
 export * from './schemas/rack.schema.js';
+export * from './schemas/location.schema.js';
+export * from './schemas/doc.schema.js';

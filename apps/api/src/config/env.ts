@@ -39,6 +39,11 @@ const EnvSchema = z.object({
   INTUNE_CLIENT_SECRET: z.string().optional(),
   INTUNE_SYNC_SCHEDULE: z.string().optional(),
 
+  MERAKI_ENABLED: z.coerce.boolean().default(false),
+  MERAKI_API_KEY: z.string().optional(),
+  MERAKI_ORG_ID: z.string().optional(),
+  MERAKI_SYNC_SCHEDULE: z.string().optional(),
+
   UPLOAD_DIR: z.string().default('./uploads'),
   MAX_FILE_SIZE_MB: z.coerce.number().default(25),
 });

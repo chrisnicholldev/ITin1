@@ -16,7 +16,8 @@ function clientIp(req: Request): string | undefined {
 
 export async function listCredentials(req: Request, res: Response) {
   const assetId = req.query['assetId'] as string | undefined;
-  const data = await service.listCredentials(assetId);
+  const { id, role } = (req as AuthenticatedRequest).user;
+  const data = await service.listCredentials(id, role, assetId);
   res.json(data);
 }
 
@@ -26,12 +27,14 @@ export async function getCredential(req: Request, res: Response) {
 }
 
 export async function revealPassword(req: Request, res: Response) {
-  const data = await service.revealPassword(String(req.params['id']), userId(req), clientIp(req));
+  const { id, role } = (req as AuthenticatedRequest).user;
+  const data = await service.revealPassword(String(req.params['id']), id, role, clientIp(req));
   res.json(data);
 }
 
 export async function copyPassword(req: Request, res: Response) {
-  const data = await service.copyPassword(String(req.params['id']), userId(req), clientIp(req));
+  const { id, role } = (req as AuthenticatedRequest).user;
+  const data = await service.copyPassword(String(req.params['id']), id, role, clientIp(req));
   res.json(data);
 }
 
@@ -56,6 +59,19 @@ export async function updateCredential(req: Request, res: Response) {
 export async function deleteCredential(req: Request, res: Response) {
   await service.deleteCredential(String(req.params['id']), userId(req));
   res.status(204).end();
+}
+
+export async function bulkDeleteCredentials(req: Request, res: Response) {
+  const ids = req.body?.ids;
+  if (!Array.isArray(ids) || ids.length === 0) throw new AppError(400, 'Expected non-empty ids array');
+  const result = await service.bulkDeleteCredentials(ids, userId(req));
+  res.json(result);
+}
+
+export async function importCredentials(req: Request, res: Response) {
+  if (!Array.isArray(req.body)) throw new AppError(400, 'Expected an array');
+  const result = await service.importCredentials(req.body, userId(req));
+  res.json(result);
 }
 
 export async function getAuditLog(req: Request, res: Response) {

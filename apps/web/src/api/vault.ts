@@ -35,6 +35,18 @@ export async function deleteCredential(id: string) {
   await apiClient.delete(`/vault/${id}`);
 }
 
+export async function bulkDeleteCredentials(ids: string[]): Promise<{ deleted: number }> {
+  const { data } = await apiClient.delete('/vault', { data: { ids } });
+  return data;
+}
+
+export async function importCredentials(
+  items: Array<{ title: string; username?: string; password: string; url?: string; notes?: string; category?: string }>,
+): Promise<{ imported: number; skipped: number }> {
+  const { data } = await apiClient.post('/vault/import', items);
+  return data;
+}
+
 export async function getAuditLog(credentialId?: string) {
   const { data } = await apiClient.get('/vault/audit', {
     params: credentialId ? { credentialId } : undefined,
