@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Pencil, X, Check, Loader2, ExternalLink, Plus, Trash2, KeyRound, Server } from 'lucide-react';
+import { ArrowLeft, Pencil, X, Check, Loader2, ExternalLink, Plus, Trash2, KeyRound, Server, User } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -281,6 +281,7 @@ export function AssetDetailPage() {
                 <DetailRow label="Serial Number" value={asset.serialNumber} />
                 <DetailRow label="Location" value={asset.location} />
                 <DetailRow label="Assigned To" value={asset.assignedTo?.displayName} />
+                <DetailRow label="Device Owner" value={asset.assignedContact?.displayName} />
                 <DetailRow label="Purchase Date" value={asset.purchaseDate ? new Date(asset.purchaseDate).toLocaleDateString() : null} />
                 <DetailRow label="Warranty Expiry" value={asset.warrantyExpiry ? new Date(asset.warrantyExpiry).toLocaleDateString() : null} />
                 <DetailRow label="Purchase Cost" value={asset.purchaseCost != null ? `£${asset.purchaseCost.toFixed(2)}` : null} />
@@ -390,6 +391,32 @@ export function AssetDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Device owner (Azure AD contact) */}
+            {asset.assignedContact && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5" /> Device Owner
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm space-y-1.5">
+                  <p className="font-medium">{asset.assignedContact.displayName}</p>
+                  {asset.assignedContact.jobTitle && (
+                    <p className="text-xs text-muted-foreground">{asset.assignedContact.jobTitle}</p>
+                  )}
+                  {asset.assignedContact.department && (
+                    <p className="text-xs text-muted-foreground">{asset.assignedContact.department}</p>
+                  )}
+                  {asset.assignedContact.email && (
+                    <p className="text-xs font-mono text-muted-foreground truncate">{asset.assignedContact.email}</p>
+                  )}
+                  {asset.assignedContact.upn && asset.assignedContact.upn !== asset.assignedContact.email && (
+                    <p className="text-xs font-mono text-muted-foreground truncate">{asset.assignedContact.upn}</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Related tickets */}
             <Card>

@@ -1,7 +1,8 @@
 import mongoose, { type Document, type Model } from 'mongoose';
 import { Asset } from '../../assets/asset.model.js';
-import { getManagedDevices } from './intune.client.js';
+import { getAzureUsers, getManagedDevices } from './intune.client.js';
 import { mapDeviceToAsset } from './intune.mapper.js';
+import { upsertContacts, findContactByUpn } from '../../contacts/contact.service.js';
 
 // ── Sync log model ────────────────────────────────────────────────────────────
 
@@ -12,6 +13,8 @@ export interface ISyncLog {
   startedAt: Date;
   completedAt?: Date;
   durationMs?: number;
+  usersFound: number;
+  usersUpserted: number;
   devicesFound: number;
   created: number;
   updated: number;
@@ -29,6 +32,8 @@ const syncLogSchema = new mongoose.Schema<ISyncLogDocument>(
     startedAt: { type: Date, required: true },
     completedAt: Date,
     durationMs: Number,
+    usersFound: { type: Number, default: 0 },
+    usersUpserted: { type: Number, default: 0 },
     devicesFound: { type: Number, default: 0 },
     created: { type: Number, default: 0 },
     updated: { type: Number, default: 0 },
@@ -50,6 +55,8 @@ export async function runIntuneSync(triggeredBy: 'schedule' | 'manual'): Promise
     status: 'running',
     triggeredBy,
     startedAt: new Date(),
+    usersFound: 0,
+    usersUpserted: 0,
     devicesFound: 0,
     created: 0,
     updated: 0,
@@ -57,6 +64,8 @@ export async function runIntuneSync(triggeredBy: 'schedule' | 'manual'): Promise
     syncErrors: [],
   });
 
+  let usersFound = 0;
+  let usersUpserted = 0;
   let devicesFound = 0;
   let created = 0;
   let updated = 0;
@@ -64,6 +73,22 @@ export async function runIntuneSync(triggeredBy: 'schedule' | 'manual'): Promise
   const syncErrors: string[] = [];
 
   try {
+    // Step 1 — Sync Azure AD users into contacts
+    const azureUsers = await getAzureUsers();
+    usersFound = azureUsers.length;
+
+    const contactResult = await upsertContacts(azureUsers.map((u) => ({
+      azureId: u.id,
+      displayName: u.displayName,
+      email: u.mail || undefined,
+      upn: u.userPrincipalName,
+      department: u.department || undefined,
+      jobTitle: u.jobTitle || undefined,
+      accountEnabled: u.accountEnabled,
+    })));
+    usersUpserted = contactResult.upserted + contactResult.modified;
+
+    // Step 2 — Sync devices, matching owners to contacts
     const devices = await getManagedDevices();
     devicesFound = devices.length;
 
@@ -71,16 +96,29 @@ export async function runIntuneSync(triggeredBy: 'schedule' | 'manual'): Promise
       try {
         const mapped = mapDeviceToAsset(device);
 
+        // Match registered owner to a contact by UPN
+        const ownerUpn = device.registeredOwners?.[0]?.userPrincipalName;
+        let assignedContact: mongoose.Types.ObjectId | undefined;
+        if (ownerUpn) {
+          const contact = await findContactByUpn(ownerUpn);
+          if (contact) assignedContact = contact._id as mongoose.Types.ObjectId;
+        }
+
         const existing = await Asset.findOne({ externalSource: 'intune', externalId: device.id });
 
         if (existing) {
-          await Asset.findByIdAndUpdate(existing._id, { $set: mapped });
+          await Asset.findByIdAndUpdate(existing._id, {
+            $set: { ...mapped, ...(assignedContact ? { assignedContact } : {}) },
+          });
           updated++;
         } else {
-          // Use a deterministic tag based on Intune device ID — avoids race conditions
-          // when many devices are created concurrently in a loop
           const assetTag = `INT-${device.id.slice(0, 8).toUpperCase()}`;
-          await Asset.create({ ...mapped, assetTag, customFields: mapped.customFields ?? {} });
+          await Asset.create({
+            ...mapped,
+            assetTag,
+            customFields: mapped.customFields ?? {},
+            ...(assignedContact ? { assignedContact } : {}),
+          });
           created++;
         }
       } catch (err) {
@@ -96,6 +134,8 @@ export async function runIntuneSync(triggeredBy: 'schedule' | 'manual'): Promise
         status: 'success',
         completedAt,
         durationMs: completedAt.getTime() - log.startedAt.getTime(),
+        usersFound,
+        usersUpserted,
         devicesFound,
         created,
         updated,
@@ -111,6 +151,8 @@ export async function runIntuneSync(triggeredBy: 'schedule' | 'manual'): Promise
         status: 'failed',
         completedAt,
         durationMs: completedAt.getTime() - log.startedAt.getTime(),
+        usersFound,
+        usersUpserted,
         devicesFound,
         created,
         updated,

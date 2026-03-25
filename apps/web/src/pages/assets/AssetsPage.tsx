@@ -132,6 +132,7 @@ export function AssetsPage() {
                 manufacturer?: string;
                 modelName?: string;
                 assignedTo?: { displayName: string };
+                assignedContact?: { displayName: string };
                 location?: string;
                 externalSource?: string;
               }) => (
@@ -160,9 +161,9 @@ export function AssetsPage() {
                     <Badge variant={(statusVariant[asset.status] as 'default') ?? 'secondary'}>
                       {asset.status.replace('_', ' ')}
                     </Badge>
-                    {asset.assignedTo && (
+                    {(asset.assignedTo || asset.assignedContact) && (
                       <span className="text-xs text-muted-foreground hidden lg:block">
-                        {asset.assignedTo.displayName}
+                        {asset.assignedTo?.displayName ?? asset.assignedContact?.displayName}
                       </span>
                     )}
                   </div>

@@ -84,6 +84,28 @@ async function graphPaginatedGet<T>(token: string, url: string): Promise<T[]> {
   return items;
 }
 
+export interface AzureUser {
+  id: string;
+  displayName: string;
+  userPrincipalName: string;
+  mail: string;
+  department: string;
+  jobTitle: string;
+  accountEnabled: boolean;
+}
+
+export async function getAzureUsers(): Promise<AzureUser[]> {
+  const token = await getAccessToken();
+
+  const url =
+    `${GRAPH_BASE}/users` +
+    `?$select=id,displayName,userPrincipalName,mail,department,jobTitle,accountEnabled` +
+    `&$filter=accountEnabled eq true` +
+    `&$top=999`;
+
+  return graphPaginatedGet<AzureUser>(token, url);
+}
+
 export async function getManagedDevices(): Promise<AzureDevice[]> {
   const token = await getAccessToken();
 

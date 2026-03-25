@@ -18,6 +18,7 @@ import categoryRoutes from './modules/categories/category.routes.js';
 import vaultRoutes from './modules/vault/vault.routes.js';
 import rackRoutes from './modules/network/rack.routes.js';
 import intuneRoutes from './modules/integrations/intune/intune.routes.js';
+import contactRoutes from './modules/contacts/contact.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -54,6 +55,7 @@ export function createApp(): Express {
   v1.use('/vault', vaultRoutes);
   v1.use('/network/racks', rackRoutes);
   v1.use('/integrations/intune', intuneRoutes);
+  v1.use('/contacts', contactRoutes);
 
   v1.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

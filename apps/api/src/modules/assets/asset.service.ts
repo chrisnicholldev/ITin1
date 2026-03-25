@@ -12,6 +12,7 @@ function toResponse(asset: IAssetDocument) {
     type: asset.type,
     status: asset.status,
     assignedTo: asset.assignedTo,
+    assignedContact: asset.assignedContact,
     location: asset.location,
     manufacturer: asset.manufacturer,
     modelName: asset.modelName,
@@ -68,6 +69,7 @@ export async function listAssets(rawQuery: unknown) {
   const [data, total] = await Promise.all([
     Asset.find(filter)
       .populate('assignedTo', 'displayName email')
+      .populate('assignedContact', 'displayName email upn department jobTitle')
       .sort({ [query.sort]: query.order === 'asc' ? 1 : -1 })
       .skip((query.page - 1) * query.limit)
       .limit(query.limit) as Promise<IAssetDocument[]>,
@@ -81,7 +83,9 @@ export async function listAssets(rawQuery: unknown) {
 }
 
 export async function getAsset(id: string) {
-  const asset = await Asset.findById(id).populate('assignedTo', 'displayName email') as IAssetDocument | null;
+  const asset = await Asset.findById(id)
+    .populate('assignedTo', 'displayName email')
+    .populate('assignedContact', 'displayName email upn department jobTitle') as IAssetDocument | null;
   if (!asset) throw new AppError(404, 'Asset not found');
   return toResponse(asset);
 }

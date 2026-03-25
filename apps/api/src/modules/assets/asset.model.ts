@@ -7,6 +7,7 @@ export interface IAsset {
   type: string;
   status: string;
   assignedTo?: mongoose.Types.ObjectId;
+  assignedContact?: mongoose.Types.ObjectId;
   location?: string;
   manufacturer?: string;
   modelName?: string;
@@ -55,6 +56,7 @@ const assetSchema = new mongoose.Schema<IAssetDocument>(
     type: { type: String, required: true, enum: Object.values(AssetType) },
     status: { type: String, required: true, enum: Object.values(AssetStatus), default: AssetStatus.ACTIVE },
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    assignedContact: { type: mongoose.Schema.Types.ObjectId, ref: 'Contact' },
     location: String,
     manufacturer: String,
     modelName: String,
