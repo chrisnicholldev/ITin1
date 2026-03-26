@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { RefreshCw, CheckCircle2, XCircle, Clock, Plug } from 'lucide-react';
+import { RefreshCw, CheckCircle2, XCircle, Clock, Plug, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -37,6 +37,80 @@ function StatusBadge({ status }: { status?: 'running' | 'success' | 'failed' }) 
     </span>
   );
   return <span className="text-muted-foreground text-xs">—</span>;
+}
+
+// ── Paginated sync history table ─────────────────────────────────────────────
+
+const PAGE_SIZE = 8;
+
+function SyncHistoryTable({ title, logs, loading }: { title: string; logs: any[]; loading: boolean }) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(logs.length / PAGE_SIZE));
+  const slice = logs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">{title} — Sync History</CardTitle>
+          {logs.length > 0 && (
+            <span className="text-xs text-muted-foreground">{logs.length} runs</span>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        {loading ? (
+          <p className="text-sm text-muted-foreground px-4 py-6">Loading...</p>
+        ) : logs.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">No sync runs yet.</p>
+        ) : (
+          <>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/40">
+                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Started</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Trigger</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Found</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Created</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Updated</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Failed</th>
+                  <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                {slice.map((log: any) => (
+                  <tr key={log._id} className="border-b last:border-0 hover:bg-muted/20">
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(log.startedAt)}</td>
+                    <td className="px-4 py-3 capitalize">{log.triggeredBy}</td>
+                    <td className="px-4 py-3"><StatusBadge status={log.status} /></td>
+                    <td className="px-4 py-3 text-right">{log.devicesFound}</td>
+                    <td className="px-4 py-3 text-right text-green-700">{log.created}</td>
+                    <td className="px-4 py-3 text-right text-blue-700">{log.updated}</td>
+                    <td className="px-4 py-3 text-right text-red-600">{log.failed}</td>
+                    <td className="px-4 py-3 text-right text-muted-foreground">{formatDuration(log.durationMs)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-2.5 border-t">
+                <span className="text-xs text-muted-foreground">Page {page} of {totalPages}</span>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 // ── Shared integration card ───────────────────────────────────────────────────
@@ -171,47 +245,7 @@ function IntegrationCard({
       </Card>
 
       {/* Sync log table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">{title} — Sync History</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {logsLoading ? (
-            <p className="text-sm text-muted-foreground px-4 py-6">Loading...</p>
-          ) : logs.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No sync runs yet.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/40">
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Started</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Trigger</th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
-                  <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Found</th>
-                  <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Created</th>
-                  <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Updated</th>
-                  <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Failed</th>
-                  <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((log: any) => (
-                  <tr key={log._id} className="border-b last:border-0 hover:bg-muted/20">
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(log.startedAt)}</td>
-                    <td className="px-4 py-3 capitalize">{log.triggeredBy}</td>
-                    <td className="px-4 py-3"><StatusBadge status={log.status} /></td>
-                    <td className="px-4 py-3 text-right">{log.devicesFound}</td>
-                    <td className="px-4 py-3 text-right text-green-700">{log.created}</td>
-                    <td className="px-4 py-3 text-right text-blue-700">{log.updated}</td>
-                    <td className="px-4 py-3 text-right text-red-600">{log.failed}</td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">{formatDuration(log.durationMs)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </CardContent>
-      </Card>
+      <SyncHistoryTable title={title} logs={logs} loading={logsLoading} />
     </>
   );
 }

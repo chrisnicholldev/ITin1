@@ -18,6 +18,7 @@ function toResponse(doc: INetworkDocument) {
     location: loc?._id ? { id: String(loc._id), name: loc.name } : undefined,
     description: doc.description,
     notes: doc.notes,
+    externalSource: doc.externalSource,
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
   };

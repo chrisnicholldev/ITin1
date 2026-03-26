@@ -47,6 +47,7 @@ export function mapDeviceToAsset(
       lastReportedAt: status?.lastReportedAt || undefined,
       publicIp: status?.publicIp || undefined,
       tags: device.tags?.length ? device.tags.join(', ') : undefined,
+      dashboardUrl: device.url || undefined,
     },
   };
 }

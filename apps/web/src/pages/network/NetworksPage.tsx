@@ -178,6 +178,7 @@ function NetworkCard({ network, isAdmin, onEdit, onDelete }: {
               {network.vlanId && <Badge variant="outline" className="text-xs">VLAN {network.vlanId}</Badge>}
               {network.dhcpEnabled && <Badge variant="secondary" className="text-xs">DHCP</Badge>}
               {network.location && <Badge variant="outline" className="text-xs">{(network.location as any).name}</Badge>}
+              {(network as any).externalSource === 'meraki' && <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 border-green-200">Meraki</Badge>}
             </div>
             {network.description && (
               <p className="text-xs text-muted-foreground mt-0.5 truncate">{network.description}</p>

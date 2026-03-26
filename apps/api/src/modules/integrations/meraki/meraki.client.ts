@@ -48,6 +48,7 @@ export interface MerakiDevice {
   tags: string[];
   notes?: string;
   address?: string;
+  url?: string;
 }
 
 export interface MerakiDeviceStatus {
@@ -71,4 +72,42 @@ export async function getMerakiDevices(orgId: string): Promise<MerakiDevice[]> {
 
 export async function getMerakiDeviceStatuses(orgId: string): Promise<MerakiDeviceStatus[]> {
   return merakiGet<MerakiDeviceStatus[]>(`/organizations/${orgId}/devices/statuses`);
+}
+
+export interface MerakiVlan {
+  id: number;
+  name: string;
+  subnet: string;         // CIDR e.g. "192.168.1.0/24"
+  applianceIp: string;    // gateway
+  dnsNameservers: string; // newline-separated
+  dhcpHandling: string;   // "Run a DHCP server" | "Relay DHCP to another server" | "Do not respond to DHCP requests"
+  dhcpLeaseTime?: string;
+  reservedIpRanges?: Array<{ start: string; end: string; comment: string }>;
+}
+
+export interface MerakiSwitchInterface {
+  interfaceId: string;
+  name: string;
+  subnet: string;
+  interfaceIp: string;    // gateway
+  vlanId?: number;
+  multicastRouting?: string;
+}
+
+// Returns [] gracefully if VLANs are not enabled on the network
+export async function getMerakiVlans(networkId: string): Promise<MerakiVlan[]> {
+  try {
+    return await merakiGet<MerakiVlan[]>(`/networks/${networkId}/appliance/vlans`);
+  } catch {
+    return [];
+  }
+}
+
+// Returns [] gracefully if the network has no L3 switch interfaces
+export async function getMerakiSwitchInterfaces(networkId: string): Promise<MerakiSwitchInterface[]> {
+  try {
+    return await merakiGet<MerakiSwitchInterface[]>(`/networks/${networkId}/switch/routing/interfaces`);
+  } catch {
+    return [];
+  }
 }

@@ -11,6 +11,8 @@ export interface INetwork {
   location?: mongoose.Types.ObjectId;
   description?: string;
   notes?: string;
+  externalSource?: string;
+  externalId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,6 +31,8 @@ const networkSchema = new mongoose.Schema<INetworkDocument>(
     location: { type: mongoose.Schema.Types.ObjectId, ref: 'Location' },
     description: String,
     notes: String,
+    externalSource: String,
+    externalId: String,
   },
   { timestamps: true },
 );
@@ -36,5 +40,6 @@ const networkSchema = new mongoose.Schema<INetworkDocument>(
 networkSchema.index({ name: 1 });
 networkSchema.index({ address: 1 });
 networkSchema.index({ location: 1 });
+networkSchema.index({ externalSource: 1, externalId: 1 });
 
 export const Network: Model<INetworkDocument> = mongoose.model<INetworkDocument>('Network', networkSchema);

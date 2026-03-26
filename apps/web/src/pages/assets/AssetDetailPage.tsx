@@ -357,6 +357,35 @@ export function AssetDetailPage() {
               </Card>
             )}
 
+            {asset.externalSource === 'meraki' && asset.customFields && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">Meraki Details</CardTitle>
+                    {asset.customFields.dashboardUrl && (
+                      <a href={asset.customFields.dashboardUrl as string} target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs">
+                          <ExternalLink className="h-3.5 w-3.5" /> Open in Dashboard
+                        </Button>
+                      </a>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <DetailRow label="Network" value={asset.customFields.merakiNetworkName as string} />
+                  <DetailRow label="Product Type" value={asset.customFields.productType as string} />
+                  <DetailRow label="Firmware" value={asset.customFields.firmware as string} />
+                  <DetailRow label="Status" value={asset.customFields.merakiStatus as string} />
+                  <DetailRow label="Public IP" value={asset.customFields.publicIp as string} />
+                  <DetailRow label="Tags" value={asset.customFields.tags as string} />
+                  <DetailRow
+                    label="Last Reported"
+                    value={asset.customFields.lastReportedAt ? new Date(asset.customFields.lastReportedAt as string).toLocaleString() : null}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
             {asset.externalSource === 'intune' && asset.customFields && (
               <Card>
                 <CardHeader><CardTitle className="text-base">Azure AD / Intune Details</CardTitle></CardHeader>

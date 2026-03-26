@@ -27,6 +27,7 @@ export const NetworkResponseSchema = z.object({
   location: z.object({ id: z.string(), name: z.string() }).optional(),
   description: z.string().optional(),
   notes: z.string().optional(),
+  externalSource: z.string().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

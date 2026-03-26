@@ -1,13 +1,98 @@
 import { Asset } from '../../assets/asset.model.js';
+import { Network } from '../../network/network.model.js';
 import { SyncLog } from '../intune/intune.service.js';
 import {
   getMerakiOrgs,
   getMerakiNetworks,
   getMerakiDevices,
   getMerakiDeviceStatuses,
+  getMerakiVlans,
+  getMerakiSwitchInterfaces,
+  type MerakiNetwork,
 } from './meraki.client.js';
 import { mapDeviceToAsset } from './meraki.mapper.js';
 import { env } from '../../../config/env.js';
+
+// ── Network sync helpers ───────────────────────────────────────────────────────
+
+async function syncNetworksForOrg(merakiNetworks: MerakiNetwork[], syncErrors: string[]) {
+  let networksCreated = 0;
+  let networksUpdated = 0;
+
+  for (const merakiNet of merakiNetworks) {
+    // Appliance (MX) networks — sync VLANs
+    if (merakiNet.productTypes.includes('appliance')) {
+      const vlans = await getMerakiVlans(merakiNet.id);
+      for (const vlan of vlans) {
+        if (!vlan.subnet) continue;
+        try {
+          const externalId = `vlan:${merakiNet.id}:${vlan.id}`;
+          const dns = vlan.dnsNameservers
+            ? vlan.dnsNameservers.split('\n').map(s => s.trim()).filter(Boolean)
+            : [];
+          const dhcpEnabled = vlan.dhcpHandling === 'Run a DHCP server';
+          const payload = {
+            name: `${merakiNet.name} — ${vlan.name} (VLAN ${vlan.id})`,
+            address: vlan.subnet,
+            vlanId: vlan.id,
+            gateway: vlan.applianceIp || undefined,
+            dnsServers: dns,
+            dhcpEnabled,
+            description: `Imported from Meraki: ${merakiNet.name}`,
+            externalSource: 'meraki',
+            externalId,
+          };
+          const existing = await Network.findOne({ externalSource: 'meraki', externalId });
+          if (existing) {
+            await Network.findByIdAndUpdate(existing._id, { $set: payload });
+            networksUpdated++;
+          } else {
+            await Network.create(payload);
+            networksCreated++;
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          syncErrors.push(`VLAN ${vlan.id} (${merakiNet.name}): ${msg}`);
+        }
+      }
+    }
+
+    // Switch (MS) networks — sync L3 routing interfaces
+    if (merakiNet.productTypes.includes('switch')) {
+      const ifaces = await getMerakiSwitchInterfaces(merakiNet.id);
+      for (const iface of ifaces) {
+        if (!iface.subnet) continue;
+        try {
+          const externalId = `iface:${merakiNet.id}:${iface.interfaceId}`;
+          const payload = {
+            name: `${merakiNet.name} — ${iface.name}${iface.vlanId ? ` (VLAN ${iface.vlanId})` : ''}`,
+            address: iface.subnet,
+            vlanId: iface.vlanId || undefined,
+            gateway: iface.interfaceIp || undefined,
+            dnsServers: [],
+            dhcpEnabled: false,
+            description: `Imported from Meraki: ${merakiNet.name}`,
+            externalSource: 'meraki',
+            externalId,
+          };
+          const existing = await Network.findOne({ externalSource: 'meraki', externalId });
+          if (existing) {
+            await Network.findByIdAndUpdate(existing._id, { $set: payload });
+            networksUpdated++;
+          } else {
+            await Network.create(payload);
+            networksCreated++;
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          syncErrors.push(`Switch interface ${iface.name} (${merakiNet.name}): ${msg}`);
+        }
+      }
+    }
+  }
+
+  return { networksCreated, networksUpdated };
+}
 
 export async function runMerakiSync(triggeredBy: 'schedule' | 'manual') {
   const log = await SyncLog.create({
@@ -74,6 +159,10 @@ export async function runMerakiSync(triggeredBy: 'schedule' | 'manual') {
         syncErrors.push(`Device ${device.serial} (${device.name}): ${msg}`);
       }
     }
+
+    // Sync VLANs and switch routing interfaces into the Networks collection
+    const { networksCreated, networksUpdated } = await syncNetworksForOrg(networks, syncErrors);
+    console.log(`[meraki-sync] Networks — created: ${networksCreated}, updated: ${networksUpdated}`);
 
     const completedAt = new Date();
     await SyncLog.findByIdAndUpdate(log._id, {
