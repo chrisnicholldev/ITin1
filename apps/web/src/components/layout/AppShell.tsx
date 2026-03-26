@@ -23,7 +23,7 @@ import {
   DatabaseBackup,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, minRole: 'end_user' },
@@ -64,6 +64,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     staleTime: 5 * 60 * 1000,
   });
   const orgName = orgSettings?.orgName ?? 'IT Helpdesk';
+
+  useEffect(() => { document.title = orgName; }, [orgName]);
 
   const handleLogout = async () => {
     try { await logout(); } catch { /* ignore */ }
