@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Textarea } from '@/components/ui/textarea';
 import { listRacks, createRack, deleteRack } from '@/api/racks';
 import { CreateRackSchema, type CreateRackInput } from '@itdesk/shared';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuthStore } from '@/stores/auth.store';
 import { UserRole } from '@itdesk/shared';
 
@@ -38,9 +39,9 @@ export function RacksPage() {
     queryFn: listRacks,
   });
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateRackInput>({
+  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<CreateRackInput>({
     resolver: zodResolver(CreateRackSchema),
-    defaultValues: { totalU: 42 },
+    defaultValues: { totalU: 42, uNumbering: 'top-down' },
   });
 
   const { mutate: doCreate, isPending } = useMutation({
@@ -166,6 +167,15 @@ export function RacksPage() {
             </Field>
             <Field label="Size (U) *" error={errors.totalU?.message}>
               <Input type="number" min="1" max="100" {...register('totalU')} />
+            </Field>
+            <Field label="U Numbering">
+              <Select defaultValue="top-down" onValueChange={(v) => setValue('uNumbering', v as 'top-down' | 'bottom-up')}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="top-down">Top-down (U1 at top)</SelectItem>
+                  <SelectItem value="bottom-up">Bottom-up (U1 at bottom)</SelectItem>
+                </SelectContent>
+              </Select>
             </Field>
             <Field label="Notes">
               <Textarea rows={2} placeholder="Any notes about this rack..." {...register('notes')} />

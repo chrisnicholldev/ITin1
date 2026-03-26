@@ -40,6 +40,7 @@ function rackToResponse(rack: IRackDocument, mounts: ReturnType<typeof mountToRe
     name: rack.name,
     location: rack.location,
     totalU: rack.totalU,
+    uNumbering: (rack.uNumbering ?? 'top-down') as 'top-down' | 'bottom-up',
     notes: rack.notes,
     mounts,
     createdAt: rack.createdAt.toISOString(),

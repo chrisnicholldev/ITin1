@@ -6,6 +6,7 @@ export interface IRack {
   name: string;
   location: string;
   totalU: number;
+  uNumbering: 'top-down' | 'bottom-up';
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -18,6 +19,7 @@ const rackSchema = new mongoose.Schema<IRackDocument>(
     name: { type: String, required: true, trim: true },
     location: { type: String, required: true, trim: true },
     totalU: { type: Number, required: true, default: 42 },
+    uNumbering: { type: String, enum: ['top-down', 'bottom-up'], default: 'top-down' },
     notes: String,
   },
   { timestamps: true },

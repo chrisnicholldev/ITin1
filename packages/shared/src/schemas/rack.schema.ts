@@ -1,9 +1,12 @@
 import { z } from 'zod';
 
+export const RackNumberingSchema = z.enum(['top-down', 'bottom-up']).default('top-down');
+
 export const CreateRackSchema = z.object({
   name: z.string().min(1).max(100),
   location: z.string().min(1).max(200),
   totalU: z.coerce.number().int().min(1).max(100).default(42),
+  uNumbering: RackNumberingSchema,
   notes: z.string().max(2000).optional(),
 });
 
@@ -59,6 +62,7 @@ export const RackResponseSchema = z.object({
   name: z.string(),
   location: z.string(),
   totalU: z.number(),
+  uNumbering: RackNumberingSchema,
   notes: z.string().optional(),
   mounts: z.array(RackMountResponseSchema),
   createdAt: z.string().datetime(),
@@ -66,6 +70,7 @@ export const RackResponseSchema = z.object({
 });
 
 export type RackFace = z.infer<typeof RackFaceSchema>;
+export type RackNumbering = z.infer<typeof RackNumberingSchema>;
 export type CreateRackInput = z.infer<typeof CreateRackSchema>;
 export type UpdateRackInput = z.infer<typeof UpdateRackSchema>;
 export type CreateRackMountInput = z.infer<typeof CreateRackMountSchema>;

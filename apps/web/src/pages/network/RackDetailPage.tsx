@@ -3,14 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { getRack, addMount, updateMount, removeMount } from '@/api/racks';
+import { getRack, addMount, updateMount, removeMount, updateRack } from '@/api/racks';
 import { getAssets } from '@/api/assets';
 import { CreateRackMountSchema, type CreateRackMountInput, type RackMountResponse, type RackResponse } from '@itdesk/shared';
 import { useAuthStore } from '@/stores/auth.store';
@@ -292,6 +292,7 @@ function RackDiagram({
   onEdit: (mount: RackMountResponse) => void;
   onRemove: (mount: RackMountResponse) => void;
 }) {
+  const bottomUp = (rack as any).uNumbering === 'bottom-up';
   // Index mounts by face and startU
   const frontByU = new Map<number, RackMountResponse>();
   const backByU = new Map<number, RackMountResponse>();
@@ -313,7 +314,12 @@ function RackDiagram({
 
   const rows: React.ReactNode[] = [];
 
-  for (let u = 1; u <= rack.totalU; u++) {
+  // Build U sequence: top-down = 1..totalU, bottom-up = totalU..1
+  const uSequence = bottomUp
+    ? Array.from({ length: rack.totalU }, (_, i) => rack.totalU - i)
+    : Array.from({ length: rack.totalU }, (_, i) => i + 1);
+
+  for (const u of uSequence) {
     const fm = frontByU.get(u);
     const bm = backByU.get(u);
     const fc = frontCovered.has(u);
@@ -370,7 +376,9 @@ function RackDiagram({
       <table className="w-full border-collapse">
         <thead>
           <tr className="bg-slate-800/60 border-b border-slate-700">
-            <th className="w-8 text-xs text-slate-500 font-normal py-1 border-r border-slate-700">U</th>
+            <th className="w-8 text-xs text-slate-500 font-normal py-1 border-r border-slate-700 whitespace-nowrap">
+              {bottomUp ? '↑ U' : 'U ↓'}
+            </th>
             <th className="text-xs text-slate-400 font-medium py-1 w-1/2 border-r border-slate-700/50">FRONT</th>
             <th className="text-xs text-slate-400 font-medium py-1 w-1/2">BACK</th>
           </tr>
@@ -416,6 +424,14 @@ export function RackDetailPage() {
 
   const { mutate: doRemove } = useMutation({
     mutationFn: ({ mountId }: { mountId: string }) => removeMount(id!, mountId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['racks', id] }),
+  });
+
+  const { mutate: flipNumbering } = useMutation({
+    mutationFn: () => {
+      const current = (rack as any)?.uNumbering ?? 'top-down';
+      return updateRack(id!, { uNumbering: current === 'top-down' ? 'bottom-up' : 'top-down' } as any);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['racks', id] }),
   });
 
@@ -471,9 +487,15 @@ export function RackDetailPage() {
           </p>
         </div>
         {isAdmin && (
-          <Button size="sm" onClick={() => { setEditingMount(undefined); setPreStartU(undefined); setPreFace('both'); setModalOpen(true); }} className="gap-1.5">
-            <Plus className="h-4 w-4" /> Mount Device
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => flipNumbering()} className="gap-1.5" title="Toggle U numbering direction">
+              <ArrowUpDown className="h-4 w-4" />
+              {(rack as any).uNumbering === 'bottom-up' ? 'U1 at bottom' : 'U1 at top'}
+            </Button>
+            <Button size="sm" onClick={() => { setEditingMount(undefined); setPreStartU(undefined); setPreFace('both'); setModalOpen(true); }} className="gap-1.5">
+              <Plus className="h-4 w-4" /> Mount Device
+            </Button>
+          </div>
         )}
       </div>
 
