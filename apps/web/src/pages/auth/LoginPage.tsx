@@ -93,12 +93,15 @@ export function LoginPage() {
     setLoading(true);
     try {
       const result = await twoFactorConfirm(code, tempToken);
+      // Store the session silently — do NOT navigate yet. The user must
+      // acknowledge the recovery codes first before we send them to the dashboard.
+      if (result.accessToken) {
+        setTokens(result.accessToken);
+        const user = await getMe();
+        setUser(user);
+      }
       setRecoveryCodes(result.recoveryCodes);
       setStage('recovery');
-      // Tokens are returned from confirm — store them now so the next navigation works
-      if (result.accessToken) {
-        await completeLogin(result.accessToken);
-      }
     } catch (err: any) {
       setError(err?.response?.data?.error ?? err?.message ?? 'Invalid code');
       setCode('');
