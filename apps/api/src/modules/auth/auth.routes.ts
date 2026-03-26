@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from 'express';
+import rateLimit from 'express-rate-limit';
 import {
   login,
   refresh,
@@ -13,7 +14,25 @@ import { requireAuth } from '../../middleware/auth.middleware.js';
 
 const router: IRouter = Router();
 
-router.post('/login', login);
+// Max 10 login attempts per IP per 15 minutes
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts — please try again in 15 minutes' },
+});
+
+// Max 10 2FA attempts per IP per 15 minutes
+const twoFaLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts — please try again in 15 minutes' },
+});
+
+router.post('/login', loginLimiter, login);
 router.post('/refresh', refresh);
 router.post('/logout', requireAuth, logoutHandler);
 router.get('/me', requireAuth, me);
@@ -25,7 +44,7 @@ function requireAuthOrTempToken(req: Request, res: Response, next: NextFunction)
   requireAuth(req, res, next);
 }
 
-router.post('/2fa/verify', twoFactorVerify);
+router.post('/2fa/verify', twoFaLimiter, twoFactorVerify);
 router.post('/2fa/setup', requireAuthOrTempToken, twoFactorSetup);
 router.post('/2fa/confirm', requireAuthOrTempToken, twoFactorConfirm);
 router.delete('/2fa', requireAuth, twoFactorDisable);
