@@ -180,14 +180,28 @@ export async function runMerakiSync(triggeredBy: 'schedule' | 'manual') {
     const { networksCreated, networksUpdated } = await syncNetworksForOrg(networks, syncErrors);
     console.log(`[meraki-sync] Networks — created: ${networksCreated}, updated: ${networksUpdated}`);
 
-    // Link Meraki assets to their network by matching device IP against synced CIDRs
-    const merakiNetworkDocs = await Network.find({ externalSource: 'meraki' }).lean();
+    // Link Meraki assets to networks by IP/CIDR match across ALL network records
+    const allNetworkDocs = await Network.find({}).lean();
     const merakiAssets = await Asset.find({ externalSource: 'meraki' }).lean();
+    // Build a serial→merakiNetworkId map for fallback linking
+    const merakiNetworkById = new Map(networks.map((n) => [n.id, n]));
     let linked = 0;
     for (const asset of merakiAssets) {
       const ip = asset.specs?.ipAddress;
-      if (!ip) continue;
-      const match = merakiNetworkDocs.find((n) => ipInCidr(ip, n.address));
+      let match = ip ? allNetworkDocs.find((n) => ipInCidr(ip, n.address)) : undefined;
+
+      // Fallback: if no IP match, link to the single Meraki-imported network
+      // that belongs to the same Meraki site (only if exactly one VLAN on that site)
+      if (!match) {
+        const merakiNetId = asset.customFields?.merakiNetworkId as string | undefined;
+        if (merakiNetId) {
+          const siteNets = allNetworkDocs.filter(
+            (n) => n.externalId?.startsWith(`vlan:${merakiNetId}:`) || n.externalId?.startsWith(`iface:${merakiNetId}:`),
+          );
+          if (siteNets.length === 1) match = siteNets[0];
+        }
+      }
+
       if (match && String(asset.networkId ?? '') !== String(match._id)) {
         await Asset.findByIdAndUpdate(asset._id, { $set: { networkId: match._id } });
         linked++;
