@@ -18,6 +18,7 @@ import {
   Menu,
   X,
   Building2,
+  DatabaseBackup,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -34,6 +35,7 @@ const navItems = [
   { href: '/admin/locations', label: 'Locations', icon: MapPin, minRole: 'it_admin' },
   { href: '/admin/users', label: 'Users', icon: Users, minRole: 'it_admin' },
   { href: '/admin/integrations', label: 'Integrations', icon: Plug, minRole: 'it_admin' },
+  { href: '/admin/backup', label: 'Backup', icon: DatabaseBackup, minRole: 'it_admin' },
   { href: '/admin/settings', label: 'Settings', icon: Settings, minRole: 'it_admin' },
 ];
 
