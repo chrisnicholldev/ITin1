@@ -13,6 +13,22 @@ import {
 import { mapDeviceToAsset } from './meraki.mapper.js';
 import { env } from '../../../config/env.js';
 
+// ── CIDR helpers ──────────────────────────────────────────────────────────────
+
+function ipToInt(ip: string): number {
+  return ip.split('.').reduce((acc, octet) => (acc << 8) | parseInt(octet, 10), 0) >>> 0;
+}
+
+function ipInCidr(ip: string, cidr: string): boolean {
+  try {
+    const [network, bits] = cidr.split('/');
+    const mask = (~((1 << (32 - parseInt(bits!, 10))) - 1)) >>> 0;
+    return (ipToInt(ip) & mask) === (ipToInt(network!) & mask);
+  } catch {
+    return false;
+  }
+}
+
 // ── Network sync helpers ───────────────────────────────────────────────────────
 
 async function syncNetworksForOrg(merakiNetworks: MerakiNetwork[], syncErrors: string[]) {
@@ -163,6 +179,21 @@ export async function runMerakiSync(triggeredBy: 'schedule' | 'manual') {
     // Sync VLANs and switch routing interfaces into the Networks collection
     const { networksCreated, networksUpdated } = await syncNetworksForOrg(networks, syncErrors);
     console.log(`[meraki-sync] Networks — created: ${networksCreated}, updated: ${networksUpdated}`);
+
+    // Link Meraki assets to their network by matching device IP against synced CIDRs
+    const merakiNetworkDocs = await Network.find({ externalSource: 'meraki' }).lean();
+    const merakiAssets = await Asset.find({ externalSource: 'meraki' }).lean();
+    let linked = 0;
+    for (const asset of merakiAssets) {
+      const ip = asset.specs?.ipAddress;
+      if (!ip) continue;
+      const match = merakiNetworkDocs.find((n) => ipInCidr(ip, n.address));
+      if (match && String(asset.networkId ?? '') !== String(match._id)) {
+        await Asset.findByIdAndUpdate(asset._id, { $set: { networkId: match._id } });
+        linked++;
+      }
+    }
+    console.log(`[meraki-sync] Linked ${linked} devices to networks`);
 
     const completedAt = new Date();
     await SyncLog.findByIdAndUpdate(log._id, {
