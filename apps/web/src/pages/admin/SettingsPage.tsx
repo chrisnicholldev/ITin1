@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ShieldCheck, ShieldOff, Copy, Check, Building2 } from 'lucide-react';
+import { ShieldCheck, ShieldOff, Copy, Check, Building2, Upload, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuthStore } from '@/stores/auth.store';
 import { twoFactorSetup, twoFactorConfirm, twoFactorDisable, getMe } from '@/api/auth';
-import { getOrgSettings, updateOrgSettings } from '@/api/settings';
+import { getOrgSettings, updateOrgSettings, uploadOrgLogo, deleteOrgLogo } from '@/api/settings';
 
 type SetupStage = 'idle' | 'qr' | 'confirm' | 'recovery';
 
@@ -34,6 +34,17 @@ export function SettingsPage() {
       setTimeout(() => setOrgSaved(false), 2000);
     },
     onError: (e: any) => setOrgSaveError(e?.response?.data?.error ?? e?.message),
+  });
+
+  const uploadLogo = useMutation({
+    mutationFn: (file: File) => uploadOrgLogo(file),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['org-settings'] }),
+    onError: (e: any) => setOrgSaveError(e?.response?.data?.error ?? e?.message),
+  });
+
+  const removeLogo = useMutation({
+    mutationFn: deleteOrgLogo,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['org-settings'] }),
   });
 
   const [setupStage, setSetupStage] = useState<SetupStage>('idle');
@@ -133,6 +144,47 @@ export function SettingsPage() {
             </div>
             {orgSaveError && <p className="text-xs text-destructive">{orgSaveError}</p>}
             <p className="text-xs text-muted-foreground">Shown in the sidebar, login page, and browser tab.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Logo</Label>
+            <div className="flex items-center gap-4">
+              {orgSettings?.orgLogoUrl ? (
+                <img
+                  src={orgSettings.orgLogoUrl}
+                  alt="Org logo"
+                  className="h-12 w-12 rounded-lg object-contain border bg-muted p-1"
+                />
+              ) : (
+                <div className="h-12 w-12 rounded-lg border bg-muted flex items-center justify-center text-muted-foreground text-xs">
+                  None
+                </div>
+              )}
+              <div className="flex gap-2">
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadLogo.mutate(file);
+                      e.target.value = '';
+                    }}
+                  />
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium border rounded-md bg-background hover:bg-accent cursor-pointer">
+                    <Upload className="w-4 h-4" />
+                    {uploadLogo.isPending ? 'Uploading...' : 'Upload'}
+                  </span>
+                </label>
+                {orgSettings?.orgLogoUrl && (
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => removeLogo.mutate()}>
+                    <Trash2 className="w-4 h-4 mr-1" /> Remove
+                  </Button>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">PNG, JPG or SVG. Max 2 MB. Replaces the icon in the sidebar and login page.</p>
           </div>
         </CardContent>
       </Card>

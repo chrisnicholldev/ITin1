@@ -16,7 +16,10 @@ export function LoginPage() {
   const { setTokens, setUser } = useAuthStore();
 
   const [orgName, setOrgName] = useState('IT Helpdesk');
-  useEffect(() => { getOrgSettings().then((s) => setOrgName(s.orgName)).catch(() => {}); }, []);
+  const [orgLogoUrl, setOrgLogoUrl] = useState<string | undefined>();
+  useEffect(() => {
+    getOrgSettings().then((s) => { setOrgName(s.orgName); setOrgLogoUrl(s.orgLogoUrl); }).catch(() => {});
+  }, []);
 
   const [stage, setStage] = useState<Stage>('credentials');
   const [tempToken, setTempToken] = useState('');
@@ -134,8 +137,10 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-2 text-center">
-          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-            <Ticket className="w-6 h-6 text-primary-foreground" />
+          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center overflow-hidden">
+            {orgLogoUrl
+              ? <img src={orgLogoUrl} alt="logo" className="w-full h-full object-contain" />
+              : <Ticket className="w-6 h-6 text-primary-foreground" />}
           </div>
           <h1 className="text-2xl font-bold">{orgName}</h1>
           {stage === 'credentials' && (
