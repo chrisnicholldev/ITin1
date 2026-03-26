@@ -21,6 +21,7 @@ import networkRoutes from './modules/network/network.routes.js';
 import intuneRoutes from './modules/integrations/intune/intune.routes.js';
 import merakiRoutes from './modules/integrations/meraki/meraki.routes.js';
 import contactRoutes from './modules/contacts/contact.routes.js';
+import vendorRoutes from './modules/vendors/vendor.routes.js';
 import locationRoutes from './modules/locations/location.routes.js';
 import docsRoutes from './modules/docs/docs.routes.js';
 
@@ -62,6 +63,7 @@ export function createApp(): Express {
   v1.use('/integrations/intune', intuneRoutes);
   v1.use('/integrations/meraki', merakiRoutes);
   v1.use('/contacts', contactRoutes);
+  v1.use('/vendors', vendorRoutes);
   v1.use('/locations', locationRoutes);
   v1.use('/docs', docsRoutes);
 

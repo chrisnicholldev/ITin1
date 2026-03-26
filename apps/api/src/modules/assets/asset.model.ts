@@ -39,6 +39,7 @@ export interface IAsset {
     connectedTo?: mongoose.Types.ObjectId;
   };
   networkId?: mongoose.Types.ObjectId;
+  vendorId?: mongoose.Types.ObjectId;
   notes?: string;
   externalSource?: string;
   externalId?: string;
@@ -89,6 +90,7 @@ const assetSchema = new mongoose.Schema<IAssetDocument>(
       connectedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset' },
     },
     networkId: { type: mongoose.Schema.Types.ObjectId, ref: 'Network' },
+    vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor' },
     notes: String,
     externalSource: { type: String, enum: Object.values(ExternalSource) },
     externalId: String,

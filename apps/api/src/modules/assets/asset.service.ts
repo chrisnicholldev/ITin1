@@ -7,6 +7,7 @@ import { z } from 'zod';
 function toResponse(asset: IAssetDocument) {
   const obj = asset.toObject({ virtuals: true }) as Record<string, any>;
   const networkDoc = obj['networkId'];
+  const vendorDoc = obj['vendorId'];
   return {
     id: asset.id,
     assetTag: asset.assetTag,
@@ -27,6 +28,23 @@ function toResponse(asset: IAssetDocument) {
     network: asset.network,
     linkedNetwork: networkDoc?._id
       ? { id: String(networkDoc._id), name: networkDoc.name, address: networkDoc.address, vlanId: networkDoc.vlanId }
+      : undefined,
+    vendor: vendorDoc?._id
+      ? {
+          id: String(vendorDoc._id),
+          name: vendorDoc.name,
+          type: vendorDoc.type,
+          supportPhone: vendorDoc.supportPhone,
+          supportEmail: vendorDoc.supportEmail,
+          contacts: (vendorDoc.contacts ?? []).map((c: any) => ({
+            id: String(c._id),
+            name: c.name,
+            title: c.title,
+            phone: c.phone,
+            email: c.email,
+            isPrimary: c.isPrimary,
+          })),
+        }
       : undefined,
     notes: asset.notes,
     externalSource: asset.externalSource,
@@ -78,6 +96,7 @@ export async function listAssets(rawQuery: unknown) {
       .populate('assignedTo', 'displayName email')
       .populate('assignedContact', 'displayName email upn department jobTitle')
       .populate('networkId', 'name address vlanId')
+      .populate('vendorId', 'name type supportPhone supportEmail contacts')
       .sort({ [query.sort]: query.order === 'asc' ? 1 : -1 })
       .skip((query.page - 1) * query.limit)
       .limit(query.limit) as Promise<IAssetDocument[]>,
@@ -94,7 +113,8 @@ export async function getAsset(id: string) {
   const asset = await Asset.findById(id)
     .populate('assignedTo', 'displayName email')
     .populate('assignedContact', 'displayName email upn department jobTitle')
-    .populate('networkId', 'name address vlanId') as IAssetDocument | null;
+    .populate('networkId', 'name address vlanId')
+    .populate('vendorId', 'name type supportPhone supportEmail contacts') as IAssetDocument | null;
   if (!asset) throw new AppError(404, 'Asset not found');
   return toResponse(asset);
 }
@@ -121,10 +141,14 @@ export async function updateAsset(id: string, input: UpdateAssetInput) {
   if ((input as any).networkId !== undefined) {
     updates['networkId'] = (input as any).networkId ? new mongoose.Types.ObjectId((input as any).networkId) : null;
   }
+  if ((input as any).vendorId !== undefined) {
+    updates['vendorId'] = (input as any).vendorId ? new mongoose.Types.ObjectId((input as any).vendorId) : null;
+  }
 
   const asset = await Asset.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true })
     .populate('assignedTo', 'displayName email')
-    .populate('networkId', 'name address vlanId') as IAssetDocument | null;
+    .populate('networkId', 'name address vlanId')
+    .populate('vendorId', 'name type supportPhone supportEmail contacts') as IAssetDocument | null;
 
   if (!asset) throw new AppError(404, 'Asset not found');
   return toResponse(asset);

@@ -99,3 +99,15 @@ export const ExternalSource = {
   MANUAL: 'manual',
 } as const;
 export type ExternalSource = (typeof ExternalSource)[keyof typeof ExternalSource];
+
+export const VendorType = {
+  ISP: 'isp',
+  HARDWARE: 'hardware',
+  SOFTWARE: 'software',
+  MSP: 'msp',
+  TELECOMS: 'telecoms',
+  CLOUD: 'cloud',
+  FACILITIES: 'facilities',
+  OTHER: 'other',
+} as const;
+export type VendorType = (typeof VendorType)[keyof typeof VendorType];

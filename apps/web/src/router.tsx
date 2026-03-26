@@ -18,6 +18,7 @@ import { LocationsPage } from '@/pages/admin/LocationsPage';
 import { DocsPage } from '@/pages/docs/DocsPage';
 import { ArticlePage } from '@/pages/docs/ArticlePage';
 import { ArticleEditorPage } from '@/pages/docs/ArticleEditorPage';
+import { VendorsPage } from '@/pages/vendors/VendorsPage';
 
 export const router = createBrowserRouter(
   [
@@ -45,6 +46,7 @@ export const router = createBrowserRouter(
         { path: 'docs/articles/new', element: <ArticleEditorPage /> },
         { path: 'docs/articles/:slug', element: <ArticlePage /> },
         { path: 'docs/articles/:slug/edit', element: <ArticleEditorPage /> },
+        { path: 'vendors', element: <VendorsPage /> },
         { path: 'admin/users', element: <UsersPage /> },
         { path: 'admin/integrations', element: <IntegrationsPage /> },
         { path: 'admin/locations', element: <LocationsPage /> },

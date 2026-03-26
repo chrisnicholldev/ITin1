@@ -17,6 +17,7 @@ import {
   LogOut,
   Menu,
   X,
+  Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -29,6 +30,7 @@ const navItems = [
   { href: '/docs', label: 'Docs', icon: BookOpen, minRole: 'end_user' },
   { href: '/network/racks', label: 'Racks', icon: Server, minRole: 'it_technician' },
   { href: '/network/networks', label: 'Networks', icon: Globe, minRole: 'it_technician' },
+  { href: '/vendors', label: 'Vendors', icon: Building2, minRole: 'it_technician' },
   { href: '/admin/locations', label: 'Locations', icon: MapPin, minRole: 'it_admin' },
   { href: '/admin/users', label: 'Users', icon: Users, minRole: 'it_admin' },
   { href: '/admin/integrations', label: 'Integrations', icon: Plug, minRole: 'it_admin' },

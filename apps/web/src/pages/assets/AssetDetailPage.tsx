@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Pencil, X, Check, Loader2, ExternalLink, Plus, Trash2, KeyRound, Server, User, Globe } from 'lucide-react';
+import { ArrowLeft, Pencil, X, Check, Loader2, ExternalLink, Plus, Trash2, KeyRound, Server, User, Globe, Building2, Phone, Mail } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { getTickets } from '@/api/tickets';
 import { listCredentials, deleteCredential } from '@/api/vault';
 import { getMountsByAsset } from '@/api/racks';
 import { getNetworks } from '@/api/networks';
+import { getVendors } from '@/api/vendors';
 import { UpdateAssetSchema, AssetType, AssetStatus, type UpdateAssetInput, type CredentialResponse } from '@itdesk/shared';
 import { PasswordCell } from '@/components/vault/PasswordCell';
 import { CredentialModal } from '@/components/vault/CredentialModal';
@@ -93,6 +94,12 @@ export function AssetDetailPage() {
   const { data: networks = [] } = useQuery<any[]>({
     queryKey: ['networks'],
     queryFn: () => getNetworks(),
+    enabled: editing,
+  });
+
+  const { data: vendors = [] } = useQuery<any[]>({
+    queryKey: ['vendors'],
+    queryFn: () => getVendors(),
     enabled: editing,
   });
 
@@ -214,6 +221,22 @@ export function AssetDetailPage() {
                       <SelectItem key={n.id} value={n.id}>
                         {n.name} — {n.address}{n.vlanId ? ` (VLAN ${n.vlanId})` : ''}
                       </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Vendor / Supplier</Label>
+                <Select
+                  defaultValue={(asset as any).vendor?.id ?? 'none'}
+                  onValueChange={(v) => setValue('vendorId' as any, v === 'none' ? undefined : v)}
+                >
+                  <SelectTrigger><SelectValue placeholder="No vendor" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No vendor</SelectItem>
+                    {vendors.map((v: any) => (
+                      <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -545,6 +568,46 @@ export function AssetDetailPage() {
                     </div>
                     <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0" />
                   </Link>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Vendor */}
+            {(asset as any).vendor && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5" /> Vendor
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Link
+                    to="/vendors"
+                    className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 hover:border-primary transition-colors"
+                  >
+                    <div>
+                      <p className="text-xs font-medium">{(asset as any).vendor.name}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{(asset as any).vendor.type}</p>
+                    </div>
+                    <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0" />
+                  </Link>
+                  {(asset as any).vendor.supportPhone && (
+                    <a href={`tel:${(asset as any).vendor.supportPhone}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary">
+                      <Phone className="w-3 h-3" />{(asset as any).vendor.supportPhone}
+                    </a>
+                  )}
+                  {(asset as any).vendor.supportEmail && (
+                    <a href={`mailto:${(asset as any).vendor.supportEmail}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary">
+                      <Mail className="w-3 h-3" />{(asset as any).vendor.supportEmail}
+                    </a>
+                  )}
+                  {(asset as any).vendor.contacts?.filter((c: any) => c.isPrimary).map((c: any) => (
+                    <div key={c.id} className="rounded-md border bg-muted/30 px-3 py-2">
+                      <p className="text-xs font-medium">{c.name}{c.title ? ` · ${c.title}` : ''}</p>
+                      {c.phone && <p className="text-xs text-muted-foreground">{c.phone}</p>}
+                      {c.email && <p className="text-xs text-muted-foreground">{c.email}</p>}
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
             )}
