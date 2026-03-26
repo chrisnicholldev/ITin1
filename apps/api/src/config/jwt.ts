@@ -23,3 +23,19 @@ export async function verifyAccessToken(token: string): Promise<{ sub: string; r
   const { payload } = await jwtVerify(token, publicKey);
   return payload as { sub: string; role: string };
 }
+
+/** Short-lived token issued after password check, consumed by the 2FA verify step. */
+export async function signTempToken(payload: { sub: string; role: string; purpose: '2fa' }): Promise<string> {
+  return new SignJWT(payload)
+    .setProtectedHeader({ alg: ALG })
+    .setIssuedAt()
+    .setExpirationTime('10m')
+    .sign(privateKey);
+}
+
+export async function verifyTempToken(token: string): Promise<{ sub: string; role: string; purpose: string }> {
+  const { payload } = await jwtVerify(token, publicKey);
+  const p = payload as { sub: string; role: string; purpose: string };
+  if (p.purpose !== '2fa') throw new Error('Invalid token purpose');
+  return p;
+}

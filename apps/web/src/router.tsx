@@ -20,6 +20,7 @@ import { ArticlePage } from '@/pages/docs/ArticlePage';
 import { ArticleEditorPage } from '@/pages/docs/ArticleEditorPage';
 import { VendorsPage } from '@/pages/vendors/VendorsPage';
 import { BackupPage } from '@/pages/admin/BackupPage';
+import { SettingsPage } from '@/pages/admin/SettingsPage';
 
 export const router = createBrowserRouter(
   [
@@ -52,7 +53,7 @@ export const router = createBrowserRouter(
         { path: 'admin/integrations', element: <IntegrationsPage /> },
         { path: 'admin/locations', element: <LocationsPage /> },
         { path: 'admin/backup', element: <BackupPage /> },
-        { path: 'admin/settings', element: <div className="p-4 text-muted-foreground">Settings — coming soon</div> },
+        { path: 'admin/settings', element: <SettingsPage /> },
       ],
     },
     { path: '*', element: <Navigate to="/" replace /> },

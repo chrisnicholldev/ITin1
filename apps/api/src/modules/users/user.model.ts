@@ -16,6 +16,10 @@ export interface IUser {
   lastLogin?: Date;
   ldapDn?: string;
   refreshTokenHash?: string;
+  twoFactorEnabled: boolean;
+  twoFactorSecret?: string;
+  twoFactorPendingSecret?: string;
+  twoFactorRecoveryCodes?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,6 +50,10 @@ const userSchema = new mongoose.Schema<IUserDocument>(
     lastLogin: Date,
     ldapDn: String,
     refreshTokenHash: { type: String, select: false },
+    twoFactorEnabled: { type: Boolean, default: false },
+    twoFactorSecret: { type: String, select: false },
+    twoFactorPendingSecret: { type: String, select: false },
+    twoFactorRecoveryCodes: { type: [String], select: false },
   },
   { timestamps: true },
 );
