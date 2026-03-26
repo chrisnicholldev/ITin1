@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +14,11 @@ import { getAssets } from '@/api/assets';
 import { getUsers } from '@/api/users';
 import { getVendors } from '@/api/vendors';
 import { CreateCredentialSchema, CredentialCategory, VaultAccessLevel, type CreateCredentialInput, type CredentialResponse } from '@itdesk/shared';
+
+// Password is optional in this form schema — we validate it manually for create mode
+// so that editing without changing the password doesn't block submission.
+const CredentialFormSchema = CreateCredentialSchema.extend({ password: z.string().optional() });
+type CredentialFormValues = z.infer<typeof CredentialFormSchema>;
 
 const CATEGORY_LABELS: Record<string, string> = {
   service_account: 'Service Account',
@@ -72,8 +78,8 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId, preL
   });
   const allUsers: Array<{ id: string; displayName: string; email: string }> = usersData?.data ?? [];
 
-  const { register, handleSubmit, setValue, reset, control, formState: { errors } } = useForm<CreateCredentialInput>({
-    resolver: zodResolver(CreateCredentialSchema),
+  const { register, handleSubmit, setValue, reset, control, setError, formState: { errors } } = useForm<CredentialFormValues>({
+    resolver: zodResolver(CredentialFormSchema),
     defaultValues: editing
       ? {
           title: editing.title,
@@ -81,11 +87,11 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId, preL
           password: '',
           url: editing.url ?? '',
           notes: editing.notes ?? '',
-          category: editing.category as CreateCredentialInput['category'],
+          category: editing.category as CredentialFormValues['category'],
           linkedAsset: editing.linkedAsset?.id ?? preLinkedAssetId ?? '',
           linkedVendor: (editing as any).linkedVendor?.id ?? preLinkedVendorId ?? '',
           tags: editing.tags,
-          accessLevel: (editing.accessLevel ?? VaultAccessLevel.STAFF) as CreateCredentialInput['accessLevel'],
+          accessLevel: (editing.accessLevel ?? VaultAccessLevel.STAFF) as CredentialFormValues['accessLevel'],
           allowedUsers: editing.allowedUsers?.map((u) => u.id) ?? [],
         }
       : {
@@ -98,12 +104,44 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId, preL
         },
   });
 
+  // Re-populate the form whenever the credential being edited changes
+  useEffect(() => {
+    if (editing) {
+      reset({
+        title: editing.title,
+        username: editing.username ?? '',
+        password: '',
+        url: editing.url ?? '',
+        notes: editing.notes ?? '',
+        category: editing.category as CredentialFormValues['category'],
+        linkedAsset: editing.linkedAsset?.id ?? preLinkedAssetId ?? '',
+        linkedVendor: (editing as any).linkedVendor?.id ?? preLinkedVendorId ?? '',
+        tags: editing.tags,
+        accessLevel: (editing.accessLevel ?? VaultAccessLevel.STAFF) as CredentialFormValues['accessLevel'],
+        allowedUsers: editing.allowedUsers?.map((u) => u.id) ?? [],
+      });
+      setAllowedUserIds(editing.allowedUsers?.map((u) => u.id) ?? []);
+    } else {
+      reset({
+        category: CredentialCategory.OTHER,
+        tags: [],
+        linkedAsset: preLinkedAssetId ?? '',
+        linkedVendor: preLinkedVendorId ?? '',
+        accessLevel: VaultAccessLevel.STAFF,
+        allowedUsers: [],
+      });
+      setAllowedUserIds([]);
+    }
+  }, [editing?.id]);
+
   const accessLevel = useWatch({ control, name: 'accessLevel' });
 
   const { mutate, isPending } = useMutation({
-    mutationFn: (data: CreateCredentialInput) => {
-      const payload = { ...data, allowedUsers: allowedUserIds };
-      return editing ? updateCredential(editing.id, payload) : createCredential(payload);
+    mutationFn: (data: CredentialFormValues) => {
+      // When editing, omit empty password so the server keeps the existing one
+      const payload: any = { ...data, allowedUsers: allowedUserIds };
+      if (editing && !payload.password) delete payload.password;
+      return editing ? updateCredential(editing.id, payload) : createCredential(payload as CreateCredentialInput);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vault'] });
@@ -129,7 +167,13 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId, preL
           <DialogTitle>{editing ? 'Edit Credential' : 'Add Credential'}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit((d) => mutate(d))} className="space-y-4">
+        <form onSubmit={handleSubmit((d) => {
+          if (!editing && !d.password) {
+            setError('password', { message: 'Password is required' });
+            return;
+          }
+          mutate(d);
+        })} className="space-y-4">
           <Field label="Title *" error={errors.title?.message}>
             <Input placeholder="e.g. iDRAC Admin, Switch Management" {...register('title')} />
           </Field>
