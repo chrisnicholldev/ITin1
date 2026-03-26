@@ -1,8 +1,11 @@
 import { apiClient } from './client';
 import type { CreateCredentialInput, UpdateCredentialInput } from '@itdesk/shared';
 
-export async function listCredentials(assetId?: string) {
-  const { data } = await apiClient.get('/vault', { params: assetId ? { assetId } : undefined });
+export async function listCredentials(assetId?: string, vendorId?: string) {
+  const params: Record<string, string> = {};
+  if (assetId) params['assetId'] = assetId;
+  if (vendorId) params['vendorId'] = vendorId;
+  const { data } = await apiClient.get('/vault', { params: Object.keys(params).length ? params : undefined });
   return data;
 }
 

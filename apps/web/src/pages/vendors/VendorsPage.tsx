@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Pencil, Trash2, ChevronDown, ChevronUp,
-  Phone, Mail, Globe, UserPlus, Building2,
+  Phone, Mail, Globe, UserPlus, Building2, KeyRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,11 +13,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuthStore } from '@/stores/auth.store';
-import { UserRole, VendorType, type VendorResponse } from '@itdesk/shared';
+import { UserRole, VendorType, type VendorResponse, type CredentialResponse } from '@itdesk/shared';
 import {
   getVendors, createVendor, updateVendor, deleteVendor,
   addContact, updateContact, deleteContact,
 } from '@/api/vendors';
+import { listCredentials, deleteCredential } from '@/api/vault';
+import { PasswordCell } from '@/components/vault/PasswordCell';
+import { CredentialModal } from '@/components/vault/CredentialModal';
 
 const TYPE_COLOURS: Record<string, string> = {
   isp: 'bg-blue-100 text-blue-800',
@@ -215,10 +218,23 @@ function VendorCard({ vendor, isAdmin, onEdit, onDelete }: {
   const [expanded, setExpanded] = useState(false);
   const [contactModal, setContactModal] = useState(false);
   const [editingContact, setEditingContact] = useState<VendorResponse['contacts'][0] | undefined>();
+  const [credModalOpen, setCredModalOpen] = useState(false);
+  const [editingCred, setEditingCred] = useState<CredentialResponse | undefined>();
 
   const { mutate: doDeleteContact } = useMutation({
     mutationFn: (contactId: string) => deleteContact(vendor.id, contactId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vendors'] }),
+  });
+
+  const { data: credentials = [] } = useQuery<CredentialResponse[]>({
+    queryKey: ['vault', 'vendor', vendor.id],
+    queryFn: () => listCredentials(undefined, vendor.id),
+    enabled: expanded,
+  });
+
+  const { mutate: doDeleteCred } = useMutation({
+    mutationFn: deleteCredential,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['vault', 'vendor', vendor.id] }),
   });
 
   const primaryContact = vendor.contacts.find((c) => c.isPrimary) ?? vendor.contacts[0];
@@ -351,6 +367,51 @@ function VendorCard({ vendor, isAdmin, onEdit, onDelete }: {
                 </div>
               )}
             </div>
+
+            {/* Credentials */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <KeyRound className="h-3.5 w-3.5" /> Credentials
+                </p>
+                {isAdmin && (
+                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                    onClick={() => { setEditingCred(undefined); setCredModalOpen(true); }}>
+                    <Plus className="h-3.5 w-3.5" /> Add Credential
+                  </Button>
+                )}
+              </div>
+              {credentials.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No credentials linked.</p>
+              ) : (
+                <div className="space-y-2">
+                  {credentials.map((c) => (
+                    <div key={c.id} className="rounded-md border bg-background px-3 py-2 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium truncate">{c.title}</span>
+                        {isAdmin && (
+                          <div className="flex gap-0.5 shrink-0">
+                            <Button variant="ghost" size="sm" className="h-5 w-5 p-0"
+                              onClick={() => { setEditingCred(c); setCredModalOpen(true); }}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-5 w-5 p-0 hover:text-destructive"
+                              onClick={() => { if (confirm(`Delete "${c.title}"?`)) doDeleteCred(c.id); }}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      {c.username && <p className="text-xs text-muted-foreground font-mono">{c.username}</p>}
+                      <PasswordCell id={c.id} />
+                      {c.url && (
+                        <a href={c.url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline truncate block">{c.url}</a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </CardContent>
@@ -361,6 +422,15 @@ function VendorCard({ vendor, isAdmin, onEdit, onDelete }: {
           onClose={() => { setContactModal(false); setEditingContact(undefined); }}
           vendorId={vendor.id}
           editing={editingContact}
+        />
+      )}
+
+      {credModalOpen && (
+        <CredentialModal
+          open={credModalOpen}
+          onClose={() => { setCredModalOpen(false); setEditingCred(undefined); }}
+          editing={editingCred}
+          preLinkedVendorId={vendor.id}
         />
       )}
     </Card>

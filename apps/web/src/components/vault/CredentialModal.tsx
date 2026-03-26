@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { createCredential, updateCredential } from '@/api/vault';
 import { getAssets } from '@/api/assets';
 import { getUsers } from '@/api/users';
+import { getVendors } from '@/api/vendors';
 import { CreateCredentialSchema, CredentialCategory, VaultAccessLevel, type CreateCredentialInput, type CredentialResponse } from '@itdesk/shared';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -37,6 +38,8 @@ interface Props {
   editing?: CredentialResponse;
   /** Pre-select an asset in the linked asset dropdown */
   preLinkedAssetId?: string;
+  /** Pre-select a vendor in the linked vendor dropdown */
+  preLinkedVendorId?: string;
 }
 
 const ACCESS_LEVEL_LABELS: Record<string, string> = {
@@ -45,7 +48,7 @@ const ACCESS_LEVEL_LABELS: Record<string, string> = {
   restricted: 'Specific Users',
 };
 
-export function CredentialModal({ open, onClose, editing, preLinkedAssetId }: Props) {
+export function CredentialModal({ open, onClose, editing, preLinkedAssetId, preLinkedVendorId }: Props) {
   const queryClient = useQueryClient();
   const [allowedUserIds, setAllowedUserIds] = useState<string[]>(
     editing?.allowedUsers?.map((u) => u.id) ?? [],
@@ -56,6 +59,12 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId }: Pr
     queryFn: () => getAssets({ limit: 100 }),
   });
   const assets: Array<{ id: string; name: string; assetTag: string }> = assetsData?.data ?? [];
+
+  const { data: vendorsData = [] } = useQuery({
+    queryKey: ['vendors'],
+    queryFn: () => getVendors(),
+  });
+  const vendors: Array<{ id: string; name: string }> = vendorsData as any[];
 
   const { data: usersData } = useQuery({
     queryKey: ['users', 'all'],
@@ -74,6 +83,7 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId }: Pr
           notes: editing.notes ?? '',
           category: editing.category as CreateCredentialInput['category'],
           linkedAsset: editing.linkedAsset?.id ?? preLinkedAssetId ?? '',
+          linkedVendor: (editing as any).linkedVendor?.id ?? preLinkedVendorId ?? '',
           tags: editing.tags,
           accessLevel: (editing.accessLevel ?? VaultAccessLevel.STAFF) as CreateCredentialInput['accessLevel'],
           allowedUsers: editing.allowedUsers?.map((u) => u.id) ?? [],
@@ -82,6 +92,7 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId }: Pr
           category: CredentialCategory.OTHER,
           tags: [],
           linkedAsset: preLinkedAssetId ?? '',
+          linkedVendor: preLinkedVendorId ?? '',
           accessLevel: VaultAccessLevel.STAFF,
           allowedUsers: [],
         },
@@ -109,6 +120,7 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId }: Pr
   }
 
   const defaultAssetValue = editing?.linkedAsset?.id ?? preLinkedAssetId ?? 'none';
+  const defaultVendorValue = (editing as any)?.linkedVendor?.id ?? preLinkedVendorId ?? 'none';
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -152,6 +164,21 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId }: Pr
               </Select>
             </Field>
           </div>
+
+          <Field label="Linked Vendor">
+            <Select
+              defaultValue={defaultVendorValue}
+              onValueChange={(v) => setValue('linkedVendor' as any, v === 'none' ? '' : v)}
+            >
+              <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {vendors.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
 
           <Field label="Username / Account">
             <Input placeholder="e.g. root, admin" {...register('username')} />
