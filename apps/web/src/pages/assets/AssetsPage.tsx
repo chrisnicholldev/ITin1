@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Globe, X, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,10 +35,11 @@ export function AssetsPage() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === UserRole.IT_ADMIN || user?.role === UserRole.SUPER_ADMIN;
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
 
   const [search, setSearch] = useState('');
-  const [type, setType] = useState('');
-  const [status, setStatus] = useState('');
+  const [type, setType] = useState(() => searchParams.get('type') ?? '');
+  const [status, setStatus] = useState(() => searchParams.get('status') ?? '');
   const [source, setSource] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
