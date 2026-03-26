@@ -4,6 +4,7 @@ import { connectDatabase, disconnectDatabase } from './config/database.js';
 import { redis } from './config/redis.js';
 import { initJwt } from './config/jwt.js';
 import { bootstrapSuperAdmin } from './modules/auth/auth.service.js';
+import { bootstrapCategories } from './modules/categories/category.service.js';
 import { startWorkers, stopWorkers } from './jobs/queues.js';
 import { createApp } from './app.js';
 
@@ -18,6 +19,7 @@ async function main() {
 
   // Bootstrap
   await bootstrapSuperAdmin();
+  await bootstrapCategories();
 
   // Start background workers
   await startWorkers();

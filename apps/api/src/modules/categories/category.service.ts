@@ -58,3 +58,21 @@ export async function deleteCategory(id: string) {
   const cat = await Category.findByIdAndUpdate(id, { $set: { isActive: false } }, { new: true }) as ICategoryDocument | null;
   if (!cat) throw new AppError(404, 'Category not found');
 }
+
+const DEFAULT_CATEGORIES = [
+  { name: 'Hardware', description: 'Physical hardware issues, failures, or requests', defaultPriority: 'medium' },
+  { name: 'Software', description: 'Application errors, installations, or licence requests', defaultPriority: 'medium' },
+  { name: 'Network', description: 'Connectivity, Wi-Fi, VPN, or network access issues', defaultPriority: 'high' },
+  { name: 'Account / Access', description: 'Password resets, account lockouts, permissions', defaultPriority: 'high' },
+  { name: 'Email', description: 'Email client issues, delivery problems, spam', defaultPriority: 'medium' },
+  { name: 'General Request', description: 'General IT requests and enquiries', defaultPriority: 'low' },
+];
+
+export async function bootstrapCategories(): Promise<void> {
+  const count = await Category.countDocuments();
+  if (count > 0) return;
+
+  console.log('[categories] No categories found — seeding defaults');
+  await Category.insertMany(DEFAULT_CATEGORIES);
+  console.log(`[categories] Seeded ${DEFAULT_CATEGORIES.length} default categories`);
+}
