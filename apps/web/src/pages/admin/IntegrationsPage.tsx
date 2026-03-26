@@ -3,12 +3,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { RefreshCw, CheckCircle2, XCircle, Clock, Plug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { getIntuneStatus, triggerIntuneSync, getIntuneLogs } from '@/api/integrations';
+import {
+  getIntuneStatus, triggerIntuneSync, getIntuneLogs,
+  getMerakiStatus, triggerMerakiSync, getMerakiLogs,
+} from '@/api/integrations';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDuration(ms?: number) {
   if (!ms) return '—';
-  if (ms < 1000) return `${ms}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
 }
 
 function formatDate(d?: string | Date) {
@@ -16,85 +20,64 @@ function formatDate(d?: string | Date) {
   return new Date(d).toLocaleString();
 }
 
-function StatusBadge({ status }: { status: 'running' | 'success' | 'failed' | undefined }) {
-  if (status === 'success') {
-    return (
-      <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800">
-        <CheckCircle2 className="h-3 w-3" /> Success
-      </span>
-    );
-  }
-  if (status === 'failed') {
-    return (
-      <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800">
-        <XCircle className="h-3 w-3" /> Failed
-      </span>
-    );
-  }
-  if (status === 'running') {
-    return (
-      <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800">
-        <RefreshCw className="h-3 w-3 animate-spin" /> Running
-      </span>
-    );
-  }
+function StatusBadge({ status }: { status?: 'running' | 'success' | 'failed' }) {
+  if (status === 'success') return (
+    <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800">
+      <CheckCircle2 className="h-3 w-3" /> Success
+    </span>
+  );
+  if (status === 'failed') return (
+    <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800">
+      <XCircle className="h-3 w-3" /> Failed
+    </span>
+  );
+  if (status === 'running') return (
+    <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800">
+      <RefreshCw className="h-3 w-3 animate-spin" /> Running
+    </span>
+  );
   return <span className="text-muted-foreground text-xs">—</span>;
 }
 
-export function IntegrationsPage() {
-  const queryClient = useQueryClient();
-  const [syncError, setSyncError] = useState<string | null>(null);
+// ── Shared integration card ───────────────────────────────────────────────────
 
-  const { data: status, isLoading: statusLoading } = useQuery({
-    queryKey: ['intune-status'],
-    queryFn: getIntuneStatus,
-    refetchInterval: 10_000,
-  });
-
-  const { data: logsData, isLoading: logsLoading } = useQuery({
-    queryKey: ['intune-logs'],
-    queryFn: getIntuneLogs,
-    refetchInterval: 15_000,
-  });
-
-  const { mutate: syncNow, isPending: syncing } = useMutation({
-    mutationFn: triggerIntuneSync,
-    onSuccess: () => {
-      setSyncError(null);
-      queryClient.invalidateQueries({ queryKey: ['intune-status'] });
-      queryClient.invalidateQueries({ queryKey: ['intune-logs'] });
-    },
-    onError: (err: any) => {
-      setSyncError(err?.response?.data?.error ?? 'Failed to trigger sync');
-    },
-  });
-
-  const logs: any[] = logsData?.data ?? [];
-
+function IntegrationCard({
+  title,
+  description,
+  envNote,
+  status,
+  statusLoading,
+  logs,
+  logsLoading,
+  configured,
+  onSync,
+  syncing,
+  syncError,
+}: {
+  title: string;
+  description: string;
+  envNote: string;
+  status: any;
+  statusLoading: boolean;
+  logs: any[];
+  logsLoading: boolean;
+  configured: boolean;
+  onSync: () => void;
+  syncing: boolean;
+  syncError: string | null;
+}) {
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Plug className="h-6 w-6" /> Integrations
-        </h1>
-        <p className="text-sm text-muted-foreground">Manage external data source sync</p>
-      </div>
-
-      {/* Intune card */}
+    <>
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div>
-              <CardTitle className="text-base">Microsoft Intune</CardTitle>
-              <CardDescription>Sync managed devices into the asset registry via Microsoft Graph API</CardDescription>
+              <CardTitle className="text-base">{title}</CardTitle>
+              <CardDescription>{description}</CardDescription>
             </div>
-            <span
-              className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
-                status?.enabled
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
+            <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
+              status?.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+            }`}>
               {status?.enabled ? 'Enabled' : 'Disabled'}
             </span>
           </div>
@@ -108,11 +91,9 @@ export function IntegrationsPage() {
                 <div>
                   <p className="text-muted-foreground text-xs mb-0.5">Configuration</p>
                   <p className="font-medium">
-                    {status?.tenantConfigured ? (
-                      <span className="text-green-700">Configured</span>
-                    ) : (
-                      <span className="text-amber-600">Not configured</span>
-                    )}
+                    {configured
+                      ? <span className="text-green-700">Configured</span>
+                      : <span className="text-amber-600">Not configured</span>}
                   </p>
                 </div>
                 <div>
@@ -155,6 +136,7 @@ export function IntegrationsPage() {
                   <Clock className="h-3 w-3" /> {status.queuedJobs} job{status.queuedJobs !== 1 ? 's' : ''} in queue
                 </p>
               )}
+
               {status?.lastSync?.status === 'failed' && logs[0]?.syncErrors?.length > 0 && (
                 <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2">
                   <p className="text-xs font-medium text-destructive mb-1">Last sync error</p>
@@ -168,8 +150,8 @@ export function IntegrationsPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={!status?.enabled || !status?.tenantConfigured || syncing}
-                  onClick={() => syncNow()}
+                  disabled={!status?.enabled || !configured || syncing}
+                  onClick={onSync}
                   className="gap-1.5"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
@@ -179,7 +161,8 @@ export function IntegrationsPage() {
 
               {!status?.enabled && (
                 <p className="text-xs text-muted-foreground">
-                  Set <code className="bg-muted px-1 rounded">INTUNE_ENABLED=true</code> and provide tenant credentials in your <code className="bg-muted px-1 rounded">.env</code> to enable.
+                  Set <code className="bg-muted px-1 rounded">{envNote}</code> and provide credentials in your{' '}
+                  <code className="bg-muted px-1 rounded">.env</code> to enable.
                 </p>
               )}
             </>
@@ -187,10 +170,10 @@ export function IntegrationsPage() {
         </CardContent>
       </Card>
 
-      {/* Sync log */}
+      {/* Sync log table */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Sync History</CardTitle>
+          <CardTitle className="text-base">{title} — Sync History</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {logsLoading ? (
@@ -229,6 +212,95 @@ export function IntegrationsPage() {
           )}
         </CardContent>
       </Card>
+    </>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export function IntegrationsPage() {
+  const queryClient = useQueryClient();
+  const [intuneError, setIntuneError] = useState<string | null>(null);
+  const [merakiError, setMerakiError] = useState<string | null>(null);
+
+  // Intune
+  const { data: intuneStatus, isLoading: intuneStatusLoading } = useQuery({
+    queryKey: ['intune-status'],
+    queryFn: getIntuneStatus,
+    refetchInterval: 10_000,
+  });
+  const { data: intuneLogsData, isLoading: intuneLogsLoading } = useQuery({
+    queryKey: ['intune-logs'],
+    queryFn: getIntuneLogs,
+    refetchInterval: 15_000,
+  });
+  const { mutate: syncIntune, isPending: intuneSyncing } = useMutation({
+    mutationFn: triggerIntuneSync,
+    onSuccess: () => {
+      setIntuneError(null);
+      queryClient.invalidateQueries({ queryKey: ['intune-status'] });
+      queryClient.invalidateQueries({ queryKey: ['intune-logs'] });
+    },
+    onError: (err: any) => setIntuneError(err?.response?.data?.error ?? 'Failed to trigger sync'),
+  });
+
+  // Meraki
+  const { data: merakiStatus, isLoading: merakiStatusLoading } = useQuery({
+    queryKey: ['meraki-status'],
+    queryFn: getMerakiStatus,
+    refetchInterval: 10_000,
+  });
+  const { data: merakiLogsData, isLoading: merakiLogsLoading } = useQuery({
+    queryKey: ['meraki-logs'],
+    queryFn: getMerakiLogs,
+    refetchInterval: 15_000,
+  });
+  const { mutate: syncMeraki, isPending: merakiSyncing } = useMutation({
+    mutationFn: triggerMerakiSync,
+    onSuccess: () => {
+      setMerakiError(null);
+      queryClient.invalidateQueries({ queryKey: ['meraki-status'] });
+      queryClient.invalidateQueries({ queryKey: ['meraki-logs'] });
+    },
+    onError: (err: any) => setMerakiError(err?.response?.data?.error ?? 'Failed to trigger sync'),
+  });
+
+  return (
+    <div className="space-y-6 max-w-4xl">
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Plug className="h-6 w-6" /> Integrations
+        </h1>
+        <p className="text-sm text-muted-foreground">Manage external data source sync</p>
+      </div>
+
+      <IntegrationCard
+        title="Microsoft Intune"
+        description="Sync managed devices into the asset registry via Microsoft Graph API"
+        envNote="INTUNE_ENABLED=true"
+        status={intuneStatus}
+        statusLoading={intuneStatusLoading}
+        logs={intuneLogsData?.data ?? []}
+        logsLoading={intuneLogsLoading}
+        configured={!!(intuneStatus?.tenantConfigured)}
+        onSync={() => syncIntune()}
+        syncing={intuneSyncing}
+        syncError={intuneError}
+      />
+
+      <IntegrationCard
+        title="Cisco Meraki"
+        description="Sync network devices (switches, APs, firewalls) from Meraki Dashboard"
+        envNote="MERAKI_ENABLED=true"
+        status={merakiStatus}
+        statusLoading={merakiStatusLoading}
+        logs={merakiLogsData?.data ?? []}
+        logsLoading={merakiLogsLoading}
+        configured={!!(merakiStatus?.apiKeyConfigured)}
+        onSync={() => syncMeraki()}
+        syncing={merakiSyncing}
+        syncError={merakiError}
+      />
     </div>
   );
 }
