@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Ticket, Loader2, ShieldCheck, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,12 +7,16 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuthStore } from '@/stores/auth.store';
 import { login, getMe, twoFactorVerify, twoFactorSetup, twoFactorConfirm } from '@/api/auth';
+import { getOrgSettings } from '@/api/settings';
 
 type Stage = 'credentials' | 'verify' | 'setup' | 'recovery';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { setTokens, setUser } = useAuthStore();
+
+  const [orgName, setOrgName] = useState('IT Helpdesk');
+  useEffect(() => { getOrgSettings().then((s) => setOrgName(s.orgName)).catch(() => {}); }, []);
 
   const [stage, setStage] = useState<Stage>('credentials');
   const [tempToken, setTempToken] = useState('');
@@ -133,7 +137,7 @@ export function LoginPage() {
           <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
             <Ticket className="w-6 h-6 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold">IT Helpdesk</h1>
+          <h1 className="text-2xl font-bold">{orgName}</h1>
           {stage === 'credentials' && (
             <p className="text-sm text-muted-foreground">Sign in with your network credentials</p>
           )}

@@ -1,7 +1,9 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
 import { logout } from '@/api/auth';
+import { getOrgSettings } from '@/api/settings';
 import {
   LayoutDashboard,
   Ticket,
@@ -56,6 +58,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const { data: orgSettings } = useQuery({
+    queryKey: ['org-settings'],
+    queryFn: getOrgSettings,
+    staleTime: 5 * 60 * 1000,
+  });
+  const orgName = orgSettings?.orgName ?? 'IT Helpdesk';
+
   const handleLogout = async () => {
     try { await logout(); } catch { /* ignore */ }
     storeLogout();
@@ -70,7 +79,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
           <Ticket className="w-4 h-4 text-primary-foreground" />
         </div>
-        <span className="font-semibold text-lg">IT Helpdesk</span>
+        <span className="font-semibold text-lg">{orgName}</span>
       </div>
 
       <div className="flex-1 py-4 space-y-1 px-2">
@@ -142,7 +151,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
             <Menu className="w-5 h-5" />
           </Button>
-          <span className="font-semibold">IT Helpdesk</span>
+          <span className="font-semibold">{orgName}</span>
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>

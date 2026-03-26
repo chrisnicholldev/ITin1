@@ -1,17 +1,40 @@
-import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { ShieldCheck, ShieldOff, Copy, Check } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ShieldCheck, ShieldOff, Copy, Check, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuthStore } from '@/stores/auth.store';
 import { twoFactorSetup, twoFactorConfirm, twoFactorDisable, getMe } from '@/api/auth';
+import { getOrgSettings, updateOrgSettings } from '@/api/settings';
 
 type SetupStage = 'idle' | 'qr' | 'confirm' | 'recovery';
 
 export function SettingsPage() {
   const { user, setUser } = useAuthStore();
+  const queryClient = useQueryClient();
+
+  // ── Org settings ────────────────────────────────────────────────────────────
+  const { data: orgSettings } = useQuery({ queryKey: ['org-settings'], queryFn: getOrgSettings });
+  const [orgName, setOrgName] = useState('');
+  const [orgSaveError, setOrgSaveError] = useState<string | null>(null);
+  const [orgSaved, setOrgSaved] = useState(false);
+
+  useEffect(() => {
+    if (orgSettings?.orgName) setOrgName(orgSettings.orgName);
+  }, [orgSettings?.orgName]);
+
+  const saveOrg = useMutation({
+    mutationFn: () => updateOrgSettings({ orgName }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['org-settings'] });
+      setOrgSaved(true);
+      setOrgSaveError(null);
+      setTimeout(() => setOrgSaved(false), 2000);
+    },
+    onError: (e: any) => setOrgSaveError(e?.response?.data?.error ?? e?.message),
+  });
 
   const [setupStage, setSetupStage] = useState<SetupStage>('idle');
   const [qrDataUrl, setQrDataUrl] = useState('');
@@ -81,6 +104,38 @@ export function SettingsPage() {
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">Manage your account security</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="w-5 h-5" />
+            Organisation
+          </CardTitle>
+          <CardDescription>Customise how your organisation appears in the app.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="org-name">Organisation name</Label>
+            <div className="flex gap-2">
+              <Input
+                id="org-name"
+                value={orgName}
+                onChange={(e) => setOrgName(e.target.value)}
+                placeholder="IT Helpdesk"
+                className="max-w-xs"
+              />
+              <Button
+                disabled={!orgName.trim() || saveOrg.isPending || orgName === orgSettings?.orgName}
+                onClick={() => saveOrg.mutate()}
+              >
+                {orgSaved ? <><Check className="w-4 h-4 mr-2" />Saved</> : 'Save'}
+              </Button>
+            </div>
+            {orgSaveError && <p className="text-xs text-destructive">{orgSaveError}</p>}
+            <p className="text-xs text-muted-foreground">Shown in the sidebar, login page, and browser tab.</p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
