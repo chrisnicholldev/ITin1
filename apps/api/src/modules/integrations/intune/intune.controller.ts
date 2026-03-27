@@ -1,18 +1,17 @@
 import type { Request, Response } from 'express';
-import { env } from '../../../config/env.js';
 import { addIntuneSync, intuneQueue } from '../../../jobs/queues.js';
 import { getSyncLogs, getLastSync } from './intune.service.js';
 import { AppError } from '../../../middleware/error.middleware.js';
+import { getIntuneRuntimeConfig } from '../../admin/integration-config.service.js';
 
 export async function getStatus(_req: Request, res: Response) {
-  const lastSync = await getLastSync();
+  const [lastSync, cfg] = await Promise.all([getLastSync(), getIntuneRuntimeConfig()]);
   const waiting = await intuneQueue.getWaitingCount();
   const active = await intuneQueue.getActiveCount();
 
   res.json({
-    enabled: env.INTUNE_ENABLED,
-    tenantConfigured: !!(env.INTUNE_TENANT_ID && env.INTUNE_CLIENT_ID && env.INTUNE_CLIENT_SECRET),
-    syncSchedule: env.INTUNE_SYNC_SCHEDULE,
+    enabled: cfg.enabled,
+    tenantConfigured: !!(cfg.tenantId && cfg.clientId && cfg.clientSecret),
     queuedJobs: waiting + active,
     lastSync: lastSync
       ? {
@@ -31,13 +30,11 @@ export async function getStatus(_req: Request, res: Response) {
 }
 
 export async function triggerSync(_req: Request, res: Response) {
-  if (!env.INTUNE_ENABLED) {
-    throw new AppError(400, 'Intune integration is not enabled');
+  const cfg = await getIntuneRuntimeConfig();
+  if (!cfg.enabled) throw new AppError(400, 'Intune integration is not enabled');
+  if (!(cfg.tenantId && cfg.clientId && cfg.clientSecret)) {
+    throw new AppError(400, 'Intune credentials are not fully configured');
   }
-  if (!(env.INTUNE_TENANT_ID && env.INTUNE_CLIENT_ID && env.INTUNE_CLIENT_SECRET)) {
-    throw new AppError(400, 'Intune credentials are not configured');
-  }
-
   await addIntuneSync('manual');
   res.status(202).json({ message: 'Sync queued' });
 }

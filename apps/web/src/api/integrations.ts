@@ -29,3 +29,47 @@ export async function getMerakiLogs() {
   const { data } = await apiClient.get('/integrations/meraki/logs');
   return data;
 }
+
+// ── Integration config ─────────────────────────────────────────────────────
+
+export interface IntegrationConfig {
+  intune: {
+    enabled: boolean;
+    tenantId: string;
+    clientId: string;
+    hasClientSecret: boolean;
+    syncSchedule: string;
+  };
+  meraki: {
+    enabled: boolean;
+    hasApiKey: boolean;
+    orgId: string;
+    syncSchedule: string;
+  };
+}
+
+export async function getIntegrationConfig(): Promise<IntegrationConfig> {
+  const { data } = await apiClient.get('/admin/integrations/config');
+  return data;
+}
+
+export async function updateIntuneConfig(payload: {
+  enabled: boolean;
+  tenantId: string;
+  clientId: string;
+  clientSecret: string;
+  syncSchedule: string;
+}): Promise<IntegrationConfig> {
+  const { data } = await apiClient.put('/admin/integrations/config/intune', payload);
+  return data;
+}
+
+export async function updateMerakiConfig(payload: {
+  enabled: boolean;
+  apiKey: string;
+  orgId: string;
+  syncSchedule: string;
+}): Promise<IntegrationConfig> {
+  const { data } = await apiClient.put('/admin/integrations/config/meraki', payload);
+  return data;
+}

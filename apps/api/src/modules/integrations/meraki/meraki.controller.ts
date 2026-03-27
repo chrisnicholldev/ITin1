@@ -1,19 +1,18 @@
 import type { Request, Response } from 'express';
-import { env } from '../../../config/env.js';
 import { addMerakiSync, merakiQueue } from '../../../jobs/queues.js';
 import { getMerakiSyncLogs, getLastMerakiSync } from './meraki.service.js';
 import { AppError } from '../../../middleware/error.middleware.js';
+import { getMerakiRuntimeConfig } from '../../admin/integration-config.service.js';
 
 export async function getStatus(_req: Request, res: Response) {
-  const lastSync = await getLastMerakiSync();
+  const [lastSync, cfg] = await Promise.all([getLastMerakiSync(), getMerakiRuntimeConfig()]);
   const waiting = await merakiQueue.getWaitingCount();
   const active = await merakiQueue.getActiveCount();
 
   res.json({
-    enabled: env.MERAKI_ENABLED,
-    apiKeyConfigured: !!env.MERAKI_API_KEY,
-    orgId: env.MERAKI_ORG_ID ?? null,
-    syncSchedule: env.MERAKI_SYNC_SCHEDULE ?? null,
+    enabled: cfg.enabled,
+    apiKeyConfigured: !!cfg.apiKey,
+    orgId: cfg.orgId ?? null,
     queuedJobs: waiting + active,
     lastSync: lastSync
       ? {
@@ -32,9 +31,9 @@ export async function getStatus(_req: Request, res: Response) {
 }
 
 export async function triggerSync(_req: Request, res: Response) {
-  if (!env.MERAKI_ENABLED) throw new AppError(400, 'Meraki integration is not enabled');
-  if (!env.MERAKI_API_KEY) throw new AppError(400, 'MERAKI_API_KEY is not configured');
-
+  const cfg = await getMerakiRuntimeConfig();
+  if (!cfg.enabled) throw new AppError(400, 'Meraki integration is not enabled');
+  if (!cfg.apiKey) throw new AppError(400, 'Meraki API key is not configured');
   await addMerakiSync('manual');
   res.status(202).json({ message: 'Sync queued' });
 }

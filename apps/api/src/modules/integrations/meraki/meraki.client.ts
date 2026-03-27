@@ -1,11 +1,12 @@
-import { env } from '../../../config/env.js';
+import { getMerakiRuntimeConfig } from '../../admin/integration-config.service.js';
 
 const MERAKI_BASE = 'https://api.meraki.com/api/v1';
 
 async function merakiGet<T>(path: string): Promise<T> {
+  const { apiKey } = await getMerakiRuntimeConfig();
   const res = await fetch(`${MERAKI_BASE}${path}`, {
     headers: {
-      'X-Cisco-Meraki-API-Key': env.MERAKI_API_KEY!,
+      'X-Cisco-Meraki-API-Key': apiKey!,
       'Content-Type': 'application/json',
     },
     redirect: 'follow',

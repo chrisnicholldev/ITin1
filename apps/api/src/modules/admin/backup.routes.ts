@@ -5,6 +5,7 @@ import fs from 'fs';
 import { requireAuth, requireAdmin } from '../../middleware/auth.middleware.js';
 import * as backup from './backup.controller.js';
 import { getOrgSettings, updateOrgSettings } from './settings.model.js';
+import { getIntegrationConfigMasked, updateIntuneConfig, updateMerakiConfig } from './integration-config.service.js';
 import { env } from '../../config/env.js';
 
 const router: IRouter = Router();
@@ -57,6 +58,32 @@ router.delete('/settings/logo', requireAuth, requireAdmin, async (_req: Request,
   const logoPath = path.resolve(env.UPLOAD_DIR, 'org-logo.png');
   if (fs.existsSync(logoPath)) fs.unlinkSync(logoPath);
   res.json(await updateOrgSettings({ orgLogoUrl: undefined }));
+});
+
+// ── Integration config ────────────────────────────────────────────────────────
+router.get('/integrations/config', requireAuth, requireAdmin, async (_req: Request, res: Response) => {
+  res.json(await getIntegrationConfigMasked());
+});
+
+router.put('/integrations/config/intune', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  const { enabled, tenantId, clientId, clientSecret, syncSchedule } = req.body as Record<string, string>;
+  res.json(await updateIntuneConfig({
+    enabled: enabled === 'true' || enabled === true as any,
+    tenantId: tenantId || undefined,
+    clientId: clientId || undefined,
+    clientSecret: clientSecret || undefined,
+    syncSchedule: syncSchedule || undefined,
+  }));
+});
+
+router.put('/integrations/config/meraki', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  const { enabled, apiKey, orgId, syncSchedule } = req.body as Record<string, string>;
+  res.json(await updateMerakiConfig({
+    enabled: enabled === 'true' || enabled === true as any,
+    apiKey: apiKey || undefined,
+    orgId: orgId || undefined,
+    syncSchedule: syncSchedule || undefined,
+  }));
 });
 
 // ── Backup / restore ─────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -63,6 +63,23 @@ function UserModal({ open, onClose, editing }: {
       phone: editing.phone ?? '',
     } : { role: UserRole.END_USER },
   });
+
+  // Re-populate form when the user being edited changes
+  useEffect(() => {
+    if (editing) {
+      reset({
+        displayName: editing.displayName,
+        email: editing.email,
+        username: editing.username,
+        role: editing.role,
+        department: editing.department ?? '',
+        title: editing.title ?? '',
+        phone: editing.phone ?? '',
+      });
+    } else {
+      reset({ role: UserRole.END_USER });
+    }
+  }, [editing?.id]);
 
   const { mutate, isPending, error: mutError } = useMutation({
     mutationFn: (data: CreateUserInput) =>

@@ -1,5 +1,5 @@
 import { redis } from '../../../config/redis.js';
-import { env } from '../../../config/env.js';
+import { getIntuneRuntimeConfig } from '../../admin/integration-config.service.js';
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 const TOKEN_CACHE_KEY = 'intune:access_token';
@@ -8,11 +8,12 @@ async function getAccessToken(): Promise<string> {
   const cached = await redis.get(TOKEN_CACHE_KEY);
   if (cached) return cached;
 
-  const url = `https://login.microsoftonline.com/${env.INTUNE_TENANT_ID}/oauth2/v2.0/token`;
+  const cfg = await getIntuneRuntimeConfig();
+  const url = `https://login.microsoftonline.com/${cfg.tenantId}/oauth2/v2.0/token`;
   const body = new URLSearchParams({
     grant_type: 'client_credentials',
-    client_id: env.INTUNE_CLIENT_ID!,
-    client_secret: env.INTUNE_CLIENT_SECRET!,
+    client_id: cfg.clientId!,
+    client_secret: cfg.clientSecret!,
     scope: 'https://graph.microsoft.com/.default',
   });
 
