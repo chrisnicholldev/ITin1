@@ -325,8 +325,18 @@ function RackDiagram({
     const fc = frontCovered.has(u);
     const bc = backCovered.has(u);
 
-    // If both front and back are covered by rowspan, skip this row entirely
-    if (fc && bc) continue;
+    // If both front and back are covered by rowspan, render just the U label
+    // so HTML table rowspan has a row to attach to
+    if (fc && bc) {
+      rows.push(
+        <tr key={u}>
+          <td className="w-8 text-center text-xs text-slate-500 font-mono border-r border-slate-700 select-none align-middle py-0 h-7">
+            {u}
+          </td>
+        </tr>,
+      );
+      continue;
+    }
 
     // Determine if both columns have the same 'both' mount starting here
     const isBothMount = fm && bm && fm.id === bm.id;
@@ -517,6 +527,7 @@ export function RackDetailPage() {
       />
 
       <MountModal
+        key={`${preStartU ?? 'none'}-${preFace}-${editingMount?.id ?? 'new'}`}
         open={modalOpen}
         onClose={() => { setModalOpen(false); setEditingMount(undefined); setPreStartU(undefined); }}
         rackId={id!}
