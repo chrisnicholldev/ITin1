@@ -2,6 +2,8 @@ import { Queue, Worker, type Job } from 'bullmq';
 import { env } from '../config/env.js';
 import { runIntuneSync } from '../modules/integrations/intune/intune.service.js';
 import { runMerakiSync } from '../modules/integrations/meraki/meraki.service.js';
+import { runAdSync } from '../modules/integrations/ad/ad.service.js';
+import { getAdRuntimeConfig } from '../modules/admin/integration-config.service.js';
 
 // BullMQ requires its own connection config — passing the shared ioredis instance
 // causes version mismatch errors due to pnpm deduplication. Use URL-parsed options instead.
@@ -35,10 +37,22 @@ export async function addMerakiSync(triggeredBy: 'manual' | 'schedule' = 'manual
   await merakiQueue.add('sync', { triggeredBy }, { jobId: triggeredBy === 'manual' ? `manual-${Date.now()}` : undefined });
 }
 
+// ── AD sync queue ─────────────────────────────────────────────────────────────
+
+const AD_QUEUE = 'ad-sync';
+const AD_REPEAT_JOB_KEY = 'ad-sync-scheduled';
+
+export const adQueue = new Queue(AD_QUEUE, { connection });
+
+export async function addAdSync(triggeredBy: 'manual' | 'schedule' = 'manual') {
+  await adQueue.add('sync', { triggeredBy }, { jobId: triggeredBy === 'manual' ? `manual-${Date.now()}` : undefined });
+}
+
 // ── Workers ───────────────────────────────────────────────────────────────────
 
 let intuneWorker: Worker | null = null;
 let merakiWorker: Worker | null = null;
+let adWorker: Worker | null = null;
 
 export async function startWorkers() {
   // ── Intune worker ──────────────────────────────────────────────────────────
@@ -102,11 +116,43 @@ export async function startWorkers() {
       console.log('[meraki-sync] Worker started, no schedule (manual only)');
     }
   }
+
+  // ── AD worker ──────────────────────────────────────────────────────────────
+
+  const adCfg = await getAdRuntimeConfig();
+  adWorker = new Worker(
+    AD_QUEUE,
+    async (job: Job) => {
+      const triggeredBy = job.data?.triggeredBy ?? 'schedule';
+      console.log(`[ad-sync] Starting sync (${triggeredBy})`);
+      const log = await runAdSync(triggeredBy);
+      console.log(`[ad-sync] Done — created: ${log.created}, updated: ${log.updated}, failed: ${log.failed}`);
+    },
+    { connection, concurrency: 1 },
+  );
+
+  adWorker.on('failed', (job, err) => {
+    console.error(`[ad-sync] Job ${job?.id} failed:`, err.message);
+  });
+
+  if (adCfg.syncSchedule) {
+    await adQueue.upsertJobScheduler(
+      AD_REPEAT_JOB_KEY,
+      { pattern: adCfg.syncSchedule },
+      { name: 'sync', data: { triggeredBy: 'schedule' } },
+    );
+    console.log(`[ad-sync] Worker started, schedule: ${adCfg.syncSchedule}`);
+  } else {
+    await adQueue.removeJobScheduler(AD_REPEAT_JOB_KEY);
+    console.log('[ad-sync] Worker started, no schedule (manual only)');
+  }
 }
 
 export async function stopWorkers() {
   if (intuneWorker) { await intuneWorker.close(); intuneWorker = null; }
   if (merakiWorker) { await merakiWorker.close(); merakiWorker = null; }
+  if (adWorker) { await adWorker.close(); adWorker = null; }
   await intuneQueue.close();
   await merakiQueue.close();
+  await adQueue.close();
 }

@@ -20,6 +20,7 @@ import rackRoutes from './modules/network/rack.routes.js';
 import networkRoutes from './modules/network/network.routes.js';
 import intuneRoutes from './modules/integrations/intune/intune.routes.js';
 import merakiRoutes from './modules/integrations/meraki/meraki.routes.js';
+import adRoutes from './modules/integrations/ad/ad.routes.js';
 import contactRoutes from './modules/contacts/contact.routes.js';
 import vendorRoutes from './modules/vendors/vendor.routes.js';
 import adminRoutes from './modules/admin/backup.routes.js';
@@ -64,6 +65,7 @@ export function createApp(): Express {
   v1.use('/network/networks', networkRoutes);
   v1.use('/integrations/intune', intuneRoutes);
   v1.use('/integrations/meraki', merakiRoutes);
+  v1.use('/integrations/ad', adRoutes);
   v1.use('/contacts', contactRoutes);
   v1.use('/vendors', vendorRoutes);
   v1.use('/admin', adminRoutes);

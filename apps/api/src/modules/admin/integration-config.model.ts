@@ -14,6 +14,15 @@ export interface IIntegrationConfig {
     orgId?: string;
     syncSchedule?: string;
   };
+  ad: {
+    enabled: boolean;
+    url?: string;           // ldap://dc.domain.local
+    bindDn?: string;        // CN=svc-itdesk,OU=Service Accounts,DC=domain,DC=local
+    bindCredentialsEnc?: string; // AES-GCM encrypted JSON
+    searchBase?: string;    // DC=domain,DC=local
+    computerFilter?: string; // (objectClass=computer) — customisable
+    syncSchedule?: string;
+  };
 }
 
 export interface IIntegrationConfigDocument extends IIntegrationConfig, Document {}
@@ -32,6 +41,15 @@ const schema = new mongoose.Schema<IIntegrationConfigDocument>(
       enabled: { type: Boolean, default: false },
       apiKeyEnc: String,
       orgId: String,
+      syncSchedule: String,
+    },
+    ad: {
+      enabled: { type: Boolean, default: false },
+      url: String,
+      bindDn: String,
+      bindCredentialsEnc: String,
+      searchBase: String,
+      computerFilter: String,
       syncSchedule: String,
     },
   },

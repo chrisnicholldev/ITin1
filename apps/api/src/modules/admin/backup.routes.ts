@@ -5,7 +5,7 @@ import fs from 'fs';
 import { requireAuth, requireAdmin } from '../../middleware/auth.middleware.js';
 import * as backup from './backup.controller.js';
 import { getOrgSettings, updateOrgSettings } from './settings.model.js';
-import { getIntegrationConfigMasked, updateIntuneConfig, updateMerakiConfig } from './integration-config.service.js';
+import { getIntegrationConfigMasked, updateIntuneConfig, updateMerakiConfig, updateAdConfig } from './integration-config.service.js';
 import { env } from '../../config/env.js';
 
 const router: IRouter = Router();
@@ -82,6 +82,19 @@ router.put('/integrations/config/meraki', requireAuth, requireAdmin, async (req:
     enabled: enabled === 'true' || enabled === true as any,
     apiKey: apiKey || undefined,
     orgId: orgId || undefined,
+    syncSchedule: syncSchedule || undefined,
+  }));
+});
+
+router.put('/integrations/config/ad', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  const { enabled, url, bindDn, bindCredentials, searchBase, computerFilter, syncSchedule } = req.body as Record<string, string>;
+  res.json(await updateAdConfig({
+    enabled: enabled === 'true' || enabled === true as any,
+    url: url || undefined,
+    bindDn: bindDn || undefined,
+    bindCredentials: bindCredentials || undefined,
+    searchBase: searchBase || undefined,
+    computerFilter: computerFilter || undefined,
     syncSchedule: syncSchedule || undefined,
   }));
 });

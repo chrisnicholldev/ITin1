@@ -36,6 +36,15 @@ export async function getIntegrationConfigMasked() {
       orgId: doc?.meraki?.orgId ?? env.MERAKI_ORG_ID ?? '',
       syncSchedule: doc?.meraki?.syncSchedule ?? env.MERAKI_SYNC_SCHEDULE ?? '',
     },
+    ad: {
+      enabled: doc?.ad?.enabled ?? env.LDAP_ENABLED,
+      url: doc?.ad?.url ?? env.LDAP_URL ?? '',
+      bindDn: doc?.ad?.bindDn ?? env.LDAP_BIND_DN ?? '',
+      hasBindCredentials: !!(doc?.ad?.bindCredentialsEnc ?? env.LDAP_BIND_CREDENTIALS),
+      searchBase: doc?.ad?.searchBase ?? env.LDAP_SEARCH_BASE ?? '',
+      computerFilter: doc?.ad?.computerFilter ?? '(objectClass=computer)',
+      syncSchedule: doc?.ad?.syncSchedule ?? '',
+    },
   };
 }
 
@@ -107,6 +116,47 @@ export async function updateMerakiConfig(input: {
   return getIntegrationConfigMasked();
 }
 
+export async function updateAdConfig(input: {
+  enabled?: boolean;
+  url?: string;
+  bindDn?: string;
+  bindCredentials?: string; // empty = keep existing
+  searchBase?: string;
+  computerFilter?: string;
+  syncSchedule?: string;
+}) {
+  const existing = await getDoc();
+  const update: Record<string, unknown> = { _id: INTEGRATION_CONFIG_ID };
+
+  const ad: Record<string, unknown> = {
+    enabled: input.enabled ?? existing?.ad?.enabled ?? false,
+    url: input.url ?? existing?.ad?.url,
+    bindDn: input.bindDn ?? existing?.ad?.bindDn,
+    bindCredentialsEnc: existing?.ad?.bindCredentialsEnc,
+    searchBase: input.searchBase ?? existing?.ad?.searchBase,
+    computerFilter: input.computerFilter ?? existing?.ad?.computerFilter,
+    syncSchedule: input.syncSchedule ?? existing?.ad?.syncSchedule,
+  };
+
+  if (input.bindCredentials?.trim()) {
+    ad['bindCredentialsEnc'] = encryptField(input.bindCredentials.trim());
+  }
+
+  update['ad'] = ad;
+  if (existing) {
+    update['intune'] = existing.intune;
+    update['meraki'] = existing.meraki;
+  }
+
+  await IntegrationConfig.findByIdAndUpdate(
+    INTEGRATION_CONFIG_ID,
+    { $set: update },
+    { upsert: true, new: true },
+  );
+
+  return getIntegrationConfigMasked();
+}
+
 // ── Runtime config (used by clients — DB takes precedence over env) ───────────
 
 export async function getIntuneRuntimeConfig() {
@@ -130,4 +180,19 @@ export async function getMerakiRuntimeConfig() {
   const enabled = doc?.meraki?.enabled ?? env.MERAKI_ENABLED;
 
   return { enabled, apiKey, orgId };
+}
+
+export async function getAdRuntimeConfig() {
+  const doc = await getDoc();
+  const url = doc?.ad?.url || env.LDAP_URL;
+  const bindDn = doc?.ad?.bindDn || env.LDAP_BIND_DN;
+  const bindCredentials = doc?.ad?.bindCredentialsEnc
+    ? decryptField(doc.ad.bindCredentialsEnc)
+    : env.LDAP_BIND_CREDENTIALS;
+  const searchBase = doc?.ad?.searchBase || env.LDAP_SEARCH_BASE;
+  const computerFilter = doc?.ad?.computerFilter || '(objectClass=computer)';
+  const syncSchedule = doc?.ad?.syncSchedule;
+  const enabled = doc?.ad?.enabled ?? env.LDAP_ENABLED;
+
+  return { enabled, url, bindDn, bindCredentials, searchBase, computerFilter, syncSchedule };
 }

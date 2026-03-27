@@ -11,7 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import {
   getIntuneStatus, triggerIntuneSync, getIntuneLogs,
   getMerakiStatus, triggerMerakiSync, getMerakiLogs,
-  getIntegrationConfig, updateIntuneConfig, updateMerakiConfig,
+  getAdStatus, triggerAdSync, getAdLogs,
+  getIntegrationConfig, updateIntuneConfig, updateMerakiConfig, updateAdConfig,
   type IntegrationConfig,
 } from '@/api/integrations';
 
@@ -174,6 +175,72 @@ function MerakiConfigForm({ config, onSaved }: { config: IntegrationConfig['mera
       <div className="flex justify-end">
         <Button size="sm" onClick={() => mutate()} disabled={isPending}>
           {isPending ? 'Saving…' : 'Save Meraki Config'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── AD config form ────────────────────────────────────────────────────────────
+
+function AdConfigForm({ config, onSaved }: { config: IntegrationConfig['ad']; onSaved: () => void }) {
+  const queryClient = useQueryClient();
+  const [enabled, setEnabled] = useState(config.enabled);
+  const [url, setUrl] = useState(config.url);
+  const [bindDn, setBindDn] = useState(config.bindDn);
+  const [bindCredentials, setBindCredentials] = useState('');
+  const [searchBase, setSearchBase] = useState(config.searchBase);
+  const [computerFilter, setComputerFilter] = useState(config.computerFilter || '(objectClass=computer)');
+  const [syncSchedule, setSyncSchedule] = useState(config.syncSchedule);
+
+  const { mutate, isPending, error } = useMutation({
+    mutationFn: () => updateAdConfig({ enabled, url, bindDn, bindCredentials, searchBase, computerFilter, syncSchedule }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['integration-config'] });
+      queryClient.invalidateQueries({ queryKey: ['ad-status'] });
+      onSaved();
+    },
+  });
+
+  return (
+    <div className="space-y-3 pt-2">
+      <div className="flex items-center gap-2">
+        <input type="checkbox" id="ad-enabled" className="h-4 w-4"
+          checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+        <Label htmlFor="ad-enabled" className="font-normal cursor-pointer">Enable Active Directory sync</Label>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label>LDAP URL</Label>
+          <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="ldap://dc.domain.local" />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Search Base</Label>
+          <Input value={searchBase} onChange={(e) => setSearchBase(e.target.value)} placeholder="DC=domain,DC=local" />
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>Bind DN <span className="text-xs text-muted-foreground">(service account)</span></Label>
+          <Input value={bindDn} onChange={(e) => setBindDn(e.target.value)} placeholder="CN=svc-itdesk,OU=Service Accounts,DC=domain,DC=local" />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Bind Password {config.hasBindCredentials && <span className="text-green-700 text-xs">(saved)</span>}</Label>
+          <SecretInput value={bindCredentials} onChange={setBindCredentials}
+            placeholder="Service account password" hasExisting={config.hasBindCredentials} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Sync Schedule <span className="text-xs text-muted-foreground">(cron)</span></Label>
+          <Input value={syncSchedule} onChange={(e) => setSyncSchedule(e.target.value)} placeholder="0 */6 * * *" />
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>Computer Filter <span className="text-xs text-muted-foreground">(LDAP filter — optional)</span></Label>
+          <Input value={computerFilter} onChange={(e) => setComputerFilter(e.target.value)} placeholder="(objectClass=computer)" />
+          <p className="text-xs text-muted-foreground">Scope to specific OUs or OS types, e.g. <code>(&(objectClass=computer)(operatingSystem=*Server*))</code></p>
+        </div>
+      </div>
+      {error && <p className="text-xs text-destructive">{(error as any)?.response?.data?.error ?? 'Failed to save'}</p>}
+      <div className="flex justify-end">
+        <Button size="sm" onClick={() => mutate()} disabled={isPending}>
+          {isPending ? 'Saving…' : 'Save AD Config'}
         </Button>
       </div>
     </div>
@@ -378,6 +445,7 @@ export function IntegrationsPage() {
   const queryClient = useQueryClient();
   const [intuneError, setIntuneError] = useState<string | null>(null);
   const [merakiError, setMerakiError] = useState<string | null>(null);
+  const [adError, setAdError] = useState<string | null>(null);
 
   const { data: integrationConfig } = useQuery({
     queryKey: ['integration-config'],
@@ -426,11 +494,36 @@ export function IntegrationsPage() {
     onError: (err: any) => setMerakiError(err?.response?.data?.error ?? 'Failed to trigger sync'),
   });
 
+  // AD
+  const { data: adStatus, isLoading: adStatusLoading } = useQuery({
+    queryKey: ['ad-status'],
+    queryFn: getAdStatus,
+    refetchInterval: 10_000,
+  });
+  const { data: adLogsData, isLoading: adLogsLoading } = useQuery({
+    queryKey: ['ad-logs'],
+    queryFn: getAdLogs,
+    refetchInterval: 15_000,
+  });
+  const { mutate: syncAd, isPending: adSyncing } = useMutation({
+    mutationFn: triggerAdSync,
+    onSuccess: () => {
+      setAdError(null);
+      queryClient.invalidateQueries({ queryKey: ['ad-status'] });
+      queryClient.invalidateQueries({ queryKey: ['ad-logs'] });
+    },
+    onError: (err: any) => setAdError(err?.response?.data?.error ?? 'Failed to trigger sync'),
+  });
+
   const defaultIntuneConfig = {
     enabled: false, tenantId: '', clientId: '', hasClientSecret: false, syncSchedule: '',
   };
   const defaultMerakiConfig = {
     enabled: false, hasApiKey: false, orgId: '', syncSchedule: '',
+  };
+  const defaultAdConfig = {
+    enabled: false, url: '', bindDn: '', hasBindCredentials: false,
+    searchBase: '', computerFilter: '(objectClass=computer)', syncSchedule: '',
   };
 
   return (
@@ -475,6 +568,25 @@ export function IntegrationsPage() {
         configForm={
           <MerakiConfigForm
             config={integrationConfig?.meraki ?? defaultMerakiConfig}
+            onSaved={() => {}}
+          />
+        }
+      />
+
+      <IntegrationCard
+        title="Active Directory"
+        description="Sync on-prem computer objects (servers, workstations) from your AD domain"
+        status={adStatus}
+        statusLoading={adStatusLoading}
+        logs={adLogsData?.data ?? []}
+        logsLoading={adLogsLoading}
+        configured={!!(adStatus?.configured)}
+        onSync={() => syncAd()}
+        syncing={adSyncing}
+        syncError={adError}
+        configForm={
+          <AdConfigForm
+            config={integrationConfig?.ad ?? defaultAdConfig}
             onSaved={() => {}}
           />
         }

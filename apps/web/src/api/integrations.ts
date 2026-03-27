@@ -30,6 +30,21 @@ export async function getMerakiLogs() {
   return data;
 }
 
+export async function getAdStatus() {
+  const { data } = await apiClient.get('/integrations/ad/status');
+  return data;
+}
+
+export async function triggerAdSync() {
+  const { data } = await apiClient.post('/integrations/ad/sync');
+  return data;
+}
+
+export async function getAdLogs() {
+  const { data } = await apiClient.get('/integrations/ad/logs');
+  return data;
+}
+
 // ── Integration config ─────────────────────────────────────────────────────
 
 export interface IntegrationConfig {
@@ -44,6 +59,15 @@ export interface IntegrationConfig {
     enabled: boolean;
     hasApiKey: boolean;
     orgId: string;
+    syncSchedule: string;
+  };
+  ad: {
+    enabled: boolean;
+    url: string;
+    bindDn: string;
+    hasBindCredentials: boolean;
+    searchBase: string;
+    computerFilter: string;
     syncSchedule: string;
   };
 }
@@ -71,5 +95,18 @@ export async function updateMerakiConfig(payload: {
   syncSchedule: string;
 }): Promise<IntegrationConfig> {
   const { data } = await apiClient.put('/admin/integrations/config/meraki', payload);
+  return data;
+}
+
+export async function updateAdConfig(payload: {
+  enabled: boolean;
+  url: string;
+  bindDn: string;
+  bindCredentials: string;
+  searchBase: string;
+  computerFilter: string;
+  syncSchedule: string;
+}): Promise<IntegrationConfig> {
+  const { data } = await apiClient.put('/admin/integrations/config/ad', payload);
   return data;
 }

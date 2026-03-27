@@ -97,6 +97,7 @@ export type VaultAuditAction = (typeof VaultAuditAction)[keyof typeof VaultAudit
 export const ExternalSource = {
   INTUNE: 'intune',
   MERAKI: 'meraki',
+  ACTIVE_DIRECTORY: 'active_directory',
   MANUAL: 'manual',
 } as const;
 export type ExternalSource = (typeof ExternalSource)[keyof typeof ExternalSource];
