@@ -2,7 +2,6 @@ import { apiClient } from './client';
 
 export interface Contact {
   id: string;
-  source: 'azure_ad' | 'manual';
   displayName: string;
   email?: string;
   phone?: string;
@@ -10,13 +9,6 @@ export interface Contact {
   jobTitle?: string;
   department?: string;
   notes?: string;
-  // Azure AD only
-  azureId?: string;
-  upn?: string;
-  accountEnabled?: boolean;
-  lastSyncedAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
 }
 
 export interface CreateContactInput {

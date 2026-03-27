@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Phone, Mail, Building2, Search, User, Cloud } from 'lucide-react';
+import { Plus, Pencil, Trash2, Phone, Mail, Building2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,23 +37,25 @@ function ContactModal({ open, onClose, editing }: {
       setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const { mutate, isPending, error } = useMutation({
-    mutationFn: () => {
-      const payload: CreateContactInput = {
-        displayName: form.displayName,
-        email: form.email || undefined,
-        phone: form.phone || undefined,
-        company: form.company || undefined,
-        jobTitle: form.jobTitle || undefined,
-        department: form.department || undefined,
-        notes: form.notes || undefined,
-      };
-      return editing ? updateContact(editing.id, payload) : createContact(payload);
-    },
+    mutationFn: (payload: CreateContactInput) =>
+      editing ? updateContact(editing.id, payload) : createContact(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       onClose();
     },
   });
+
+  function handleSave() {
+    mutate({
+      displayName: form.displayName,
+      email: form.email || undefined,
+      phone: form.phone || undefined,
+      company: form.company || undefined,
+      jobTitle: form.jobTitle || undefined,
+      department: form.department || undefined,
+      notes: form.notes || undefined,
+    });
+  }
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -102,7 +103,7 @@ function ContactModal({ open, onClose, editing }: {
         )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => mutate()} disabled={!form.displayName.trim() || isPending}>
+          <Button onClick={handleSave} disabled={!form.displayName.trim() || isPending}>
             {isPending ? 'Saving…' : editing ? 'Save' : 'Create'}
           </Button>
         </DialogFooter>
@@ -132,73 +133,19 @@ export function ContactsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contacts'] }),
   });
 
-  const azureContacts = contacts.filter((c) => c.source === 'azure_ad');
-  const manualContacts = contacts.filter((c) => c.source === 'manual');
+  function openEdit(contact: Contact) {
+    setEditing(contact);
+    setModalOpen(true);
+  }
 
-  function ContactRow({ contact }: { contact: Contact }) {
-    const isManual = contact.source === 'manual';
-    return (
-      <div className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors">
-        <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
-          <span className="text-xs font-semibold">{contact.displayName.slice(0, 2).toUpperCase()}</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-sm truncate">{contact.displayName}</span>
-            {contact.source === 'azure_ad' ? (
-              <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                <Cloud className="h-2.5 w-2.5" /> Azure AD
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="text-xs flex items-center gap-1">
-                <User className="h-2.5 w-2.5" /> Manual
-              </Badge>
-            )}
-            {contact.source === 'azure_ad' && contact.accountEnabled === false && (
-              <Badge variant="destructive" className="text-xs">Disabled</Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-            {contact.jobTitle && (
-              <span className="text-xs text-muted-foreground">{contact.jobTitle}</span>
-            )}
-            {contact.company && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Building2 className="h-3 w-3" />{contact.company}
-              </span>
-            )}
-            {contact.department && !contact.company && (
-              <span className="text-xs text-muted-foreground">{contact.department}</span>
-            )}
-            {contact.phone && (
-              <a href={`tel:${contact.phone}`} className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1">
-                <Phone className="h-3 w-3" />{contact.phone}
-              </a>
-            )}
-            {contact.email && (
-              <a href={`mailto:${contact.email}`} className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1">
-                <Mail className="h-3 w-3" />{contact.email}
-              </a>
-            )}
-          </div>
-          {contact.notes && (
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">{contact.notes}</p>
-          )}
-        </div>
-        {isTech && isManual && (
-          <div className="flex gap-1 shrink-0">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
-              onClick={() => { setEditing(contact); setModalOpen(true); }}>
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:text-destructive"
-              onClick={() => { if (confirm(`Delete "${contact.displayName}"?`)) doDelete(contact.id); }}>
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        )}
-      </div>
-    );
+  function openNew() {
+    setEditing(undefined);
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditing(undefined);
   }
 
   return (
@@ -207,11 +154,11 @@ export function ContactsPage() {
         <div>
           <h1 className="text-2xl font-bold">Contacts</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Manual contacts and Azure AD users
+            Key IT contacts — support lines, vendors, escalation contacts
           </p>
         </div>
         {isTech && (
-          <Button onClick={() => { setEditing(undefined); setModalOpen(true); }}>
+          <Button onClick={openNew}>
             <Plus className="h-4 w-4 mr-1.5" /> New Contact
           </Button>
         )}
@@ -221,7 +168,7 @@ export function ContactsPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           className="pl-9"
-          placeholder="Search by name, email, company…"
+          placeholder="Search contacts…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -232,10 +179,10 @@ export function ContactsPage() {
       ) : contacts.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground text-sm">
-            {search ? 'No contacts match your search.' : 'No contacts yet.'}
+            {search ? 'No contacts match your search.' : 'No contacts added yet.'}
             {isTech && !search && (
               <div className="mt-3">
-                <Button variant="outline" size="sm" onClick={() => { setEditing(undefined); setModalOpen(true); }}>
+                <Button variant="outline" size="sm" onClick={openNew}>
                   Add your first contact
                 </Button>
               </div>
@@ -243,41 +190,58 @@ export function ContactsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {manualContacts.length > 0 && (
-            <Card>
-              <div className="px-4 py-2 border-b bg-muted/30">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Manual Contacts ({manualContacts.length})
-                </p>
+        <Card>
+          <CardContent className="p-0 divide-y">
+            {contacts.map((contact) => (
+              <div key={contact.id} className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors">
+                <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                  <span className="text-xs font-semibold">{contact.displayName.slice(0, 2).toUpperCase()}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{contact.displayName}</p>
+                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                    {contact.jobTitle && (
+                      <span className="text-xs text-muted-foreground">{contact.jobTitle}</span>
+                    )}
+                    {contact.company && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Building2 className="h-3 w-3" />{contact.company}
+                      </span>
+                    )}
+                    {contact.phone && (
+                      <a href={`tel:${contact.phone}`} className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1">
+                        <Phone className="h-3 w-3" />{contact.phone}
+                      </a>
+                    )}
+                    {contact.email && (
+                      <a href={`mailto:${contact.email}`} className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1">
+                        <Mail className="h-3 w-3" />{contact.email}
+                      </a>
+                    )}
+                  </div>
+                  {contact.notes && (
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{contact.notes}</p>
+                  )}
+                </div>
+                {isTech && (
+                  <div className="flex gap-1 shrink-0">
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEdit(contact)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:text-destructive"
+                      onClick={() => { if (confirm(`Delete "${contact.displayName}"?`)) doDelete(contact.id); }}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
               </div>
-              <CardContent className="p-0 divide-y">
-                {manualContacts.map((c) => <ContactRow key={c.id} contact={c} />)}
-              </CardContent>
-            </Card>
-          )}
-
-          {azureContacts.length > 0 && (
-            <Card>
-              <div className="px-4 py-2 border-b bg-muted/30">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                  <Cloud className="h-3.5 w-3.5" /> Azure AD ({azureContacts.length})
-                </p>
-              </div>
-              <CardContent className="p-0 divide-y">
-                {azureContacts.map((c) => <ContactRow key={c.id} contact={c} />)}
-              </CardContent>
-            </Card>
-          )}
-        </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       {modalOpen && (
-        <ContactModal
-          open={modalOpen}
-          onClose={() => { setModalOpen(false); setEditing(undefined); }}
-          editing={editing}
-        />
+        <ContactModal open={modalOpen} onClose={closeModal} editing={editing} />
       )}
     </div>
   );

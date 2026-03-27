@@ -23,7 +23,8 @@ export function toContactResponse(c: IContactDocument) {
 }
 
 export async function listContacts(search?: string, limit = 50) {
-  const filter = search ? { $text: { $search: search } } : {};
+  const filter: Record<string, unknown> = { source: CONTACT_SOURCE.MANUAL };
+  if (search) filter['$text'] = { $search: search };
   const contacts = await Contact.find(filter)
     .sort({ displayName: 1 })
     .limit(limit)
@@ -38,10 +39,6 @@ export async function listContacts(search?: string, limit = 50) {
     jobTitle: c.jobTitle,
     department: c.department,
     notes: c.notes,
-    azureId: c.azureId,
-    upn: c.upn,
-    accountEnabled: c.accountEnabled,
-    lastSyncedAt: c.lastSyncedAt,
   }));
 }
 
