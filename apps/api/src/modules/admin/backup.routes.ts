@@ -6,6 +6,7 @@ import { requireAuth, requireAdmin } from '../../middleware/auth.middleware.js';
 import * as backup from './backup.controller.js';
 import { getOrgSettings, updateOrgSettings } from './settings.model.js';
 import { getIntegrationConfigMasked, updateIntuneConfig, updateMerakiConfig, updateAdConfig } from './integration-config.service.js';
+import { applyIntuneSchedule, applyMerakiSchedule, applyAdSchedule } from '../../jobs/queues.js';
 import { env } from '../../config/env.js';
 
 const router: IRouter = Router();
@@ -67,28 +68,32 @@ router.get('/integrations/config', requireAuth, requireAdmin, async (_req: Reque
 
 router.put('/integrations/config/intune', requireAuth, requireAdmin, async (req: Request, res: Response) => {
   const { enabled, tenantId, clientId, clientSecret, syncSchedule } = req.body as Record<string, string>;
-  res.json(await updateIntuneConfig({
+  const result = await updateIntuneConfig({
     enabled: enabled === 'true' || enabled === true as any,
     tenantId: tenantId || undefined,
     clientId: clientId || undefined,
     clientSecret: clientSecret || undefined,
     syncSchedule: syncSchedule || undefined,
-  }));
+  });
+  await applyIntuneSchedule(syncSchedule || undefined);
+  res.json(result);
 });
 
 router.put('/integrations/config/meraki', requireAuth, requireAdmin, async (req: Request, res: Response) => {
   const { enabled, apiKey, orgId, syncSchedule } = req.body as Record<string, string>;
-  res.json(await updateMerakiConfig({
+  const result = await updateMerakiConfig({
     enabled: enabled === 'true' || enabled === true as any,
     apiKey: apiKey || undefined,
     orgId: orgId || undefined,
     syncSchedule: syncSchedule || undefined,
-  }));
+  });
+  await applyMerakiSchedule(syncSchedule || undefined);
+  res.json(result);
 });
 
 router.put('/integrations/config/ad', requireAuth, requireAdmin, async (req: Request, res: Response) => {
   const { enabled, url, bindDn, bindCredentials, searchBase, computerFilter, syncSchedule } = req.body as Record<string, string>;
-  res.json(await updateAdConfig({
+  const result = await updateAdConfig({
     enabled: enabled === 'true' || enabled === true as any,
     url: url || undefined,
     bindDn: bindDn || undefined,
@@ -96,7 +101,9 @@ router.put('/integrations/config/ad', requireAuth, requireAdmin, async (req: Req
     searchBase: searchBase || undefined,
     computerFilter: computerFilter || undefined,
     syncSchedule: syncSchedule || undefined,
-  }));
+  });
+  await applyAdSchedule(syncSchedule || undefined);
+  res.json(result);
 });
 
 // ── Backup / restore ─────────────────────────────────────────────────────────

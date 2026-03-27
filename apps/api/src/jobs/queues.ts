@@ -148,6 +148,50 @@ export async function startWorkers() {
   }
 }
 
+// ── Live schedule updates (called after config saves) ─────────────────────────
+
+export async function applyIntuneSchedule(schedule: string | undefined) {
+  if (schedule?.trim()) {
+    await intuneQueue.upsertJobScheduler(
+      INTUNE_REPEAT_JOB_KEY,
+      { pattern: schedule.trim() },
+      { name: 'sync', data: { triggeredBy: 'schedule' } },
+    );
+    console.log(`[intune-sync] Schedule updated: ${schedule}`);
+  } else {
+    await intuneQueue.removeJobScheduler(INTUNE_REPEAT_JOB_KEY);
+    console.log('[intune-sync] Schedule cleared (manual only)');
+  }
+}
+
+export async function applyMerakiSchedule(schedule: string | undefined) {
+  if (schedule?.trim()) {
+    await merakiQueue.upsertJobScheduler(
+      MERAKI_REPEAT_JOB_KEY,
+      { pattern: schedule.trim() },
+      { name: 'sync', data: { triggeredBy: 'schedule' } },
+    );
+    console.log(`[meraki-sync] Schedule updated: ${schedule}`);
+  } else {
+    await merakiQueue.removeJobScheduler(MERAKI_REPEAT_JOB_KEY);
+    console.log('[meraki-sync] Schedule cleared (manual only)');
+  }
+}
+
+export async function applyAdSchedule(schedule: string | undefined) {
+  if (schedule?.trim()) {
+    await adQueue.upsertJobScheduler(
+      AD_REPEAT_JOB_KEY,
+      { pattern: schedule.trim() },
+      { name: 'sync', data: { triggeredBy: 'schedule' } },
+    );
+    console.log(`[ad-sync] Schedule updated: ${schedule}`);
+  } else {
+    await adQueue.removeJobScheduler(AD_REPEAT_JOB_KEY);
+    console.log('[ad-sync] Schedule cleared (manual only)');
+  }
+}
+
 export async function stopWorkers() {
   if (intuneWorker) { await intuneWorker.close(); intuneWorker = null; }
   if (merakiWorker) { await merakiWorker.close(); merakiWorker = null; }
