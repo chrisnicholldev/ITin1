@@ -25,6 +25,7 @@ import vendorRoutes from './modules/vendors/vendor.routes.js';
 import adminRoutes from './modules/admin/backup.routes.js';
 import locationRoutes from './modules/locations/location.routes.js';
 import docsRoutes from './modules/docs/docs.routes.js';
+import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -68,6 +69,7 @@ export function createApp(): Express {
   v1.use('/admin', adminRoutes);
   v1.use('/locations', locationRoutes);
   v1.use('/docs', docsRoutes);
+  v1.use('/dashboard', dashboardRoutes);
 
   v1.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

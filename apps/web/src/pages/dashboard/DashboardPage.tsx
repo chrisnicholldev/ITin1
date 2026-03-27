@@ -2,7 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Ticket, Monitor, Globe, Server, BookOpen, Users,
   AlertTriangle, ArrowRight, Cpu, Printer,
-  Router, Wifi, HardDrive, Package,
+  Router, Wifi, HardDrive, Package, KeyRound,
+  CheckCircle2, XCircle, Clock, ShieldAlert,
+  Activity,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,11 +12,18 @@ import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
 import { UserRole } from '@itdesk/shared';
 import { getTickets } from '@/api/tickets';
-import { getAssets, getAssetSummary } from '@/api/assets';
-import { getNetworks } from '@/api/networks';
-import { listRacks } from '@/api/racks';
-import { getArticles } from '@/api/docs';
-import { getUsers } from '@/api/users';
+import { getAssets } from '@/api/assets';
+import { getDashboardStats } from '@/api/dashboard';
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 
@@ -42,35 +51,6 @@ function StatCard({
   );
 }
 
-// ── Quick-link module card ────────────────────────────────────────────────────
-
-function ModuleCard({
-  title, description, icon: Icon, to, colour,
-}: {
-  title: string;
-  description: string;
-  icon: React.ElementType;
-  to: string;
-  colour: string;
-}) {
-  return (
-    <Link to={to}>
-      <Card className="hover:border-primary/40 hover:shadow-sm transition-all h-full cursor-pointer">
-        <CardContent className="pt-4 pb-4 flex items-start gap-3">
-          <div className={`p-2 rounded-lg ${colour} shrink-0`}>
-            <Icon className="h-4 w-4" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm">{title}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-          </div>
-          <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
-
 // ── Asset type icon map ───────────────────────────────────────────────────────
 
 const TYPE_ICON: Record<string, React.ElementType> = {
@@ -87,12 +67,72 @@ const TYPE_ICON: Record<string, React.ElementType> = {
   other: Package,
 };
 
+const PRIORITY_COLOUR: Record<string, string> = {
+  critical: 'bg-red-500',
+  high: 'bg-orange-400',
+  medium: 'bg-yellow-400',
+  low: 'bg-blue-400',
+};
+
+const PRIORITY_ORDER = ['critical', 'high', 'medium', 'low'];
+
 const priorityVariant: Record<string, 'destructive' | 'warning' | 'info' | 'secondary'> = {
   critical: 'destructive',
   high: 'warning',
   medium: 'info',
   low: 'secondary',
 };
+
+// ── Integration status card ───────────────────────────────────────────────────
+
+function IntegrationStatusCard({
+  name, enabled, lastSyncAt, lastSyncStatus, to,
+}: {
+  name: string;
+  enabled: boolean;
+  lastSyncAt: string | null;
+  lastSyncStatus: string | null;
+  to: string;
+}) {
+  const isSuccess = lastSyncStatus === 'success';
+  const isFailed = lastSyncStatus === 'failed';
+
+  return (
+    <Link to={to}>
+      <Card className="hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer h-full">
+        <CardContent className="pt-4 pb-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="font-medium text-sm">{name}</span>
+            </div>
+            {!enabled ? (
+              <Badge variant="secondary" className="text-xs">Disabled</Badge>
+            ) : isFailed ? (
+              <Badge variant="destructive" className="text-xs">Failed</Badge>
+            ) : isSuccess ? (
+              <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Synced</Badge>
+            ) : (
+              <Badge variant="secondary" className="text-xs">Never synced</Badge>
+            )}
+          </div>
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+            {isFailed ? (
+              <XCircle className="h-3 w-3 text-destructive shrink-0" />
+            ) : isSuccess ? (
+              <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" />
+            ) : (
+              <Clock className="h-3 w-3 shrink-0" />
+            )}
+            {lastSyncAt
+              ? `Last sync ${timeAgo(lastSyncAt)}`
+              : enabled ? 'No sync run yet' : 'Integration disabled'}
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -101,51 +141,34 @@ export function DashboardPage() {
   const isAdmin = user?.role === UserRole.IT_ADMIN || user?.role === UserRole.SUPER_ADMIN;
   const isTech = user?.role !== UserRole.END_USER;
 
+  const { data: stats } = useQuery({
+    queryKey: ['dashboard', 'stats'],
+    queryFn: getDashboardStats,
+    staleTime: 30_000,
+  });
+
   const { data: ticketsData } = useQuery({
     queryKey: ['tickets', 'dashboard'],
     queryFn: () => getTickets({ limit: 6, status: 'open' }),
-  });
-
-  const { data: assetSummary } = useQuery({
-    queryKey: ['assets', 'summary'],
-    queryFn: getAssetSummary,
-    enabled: isTech,
+    staleTime: 30_000,
   });
 
   const { data: recentAssets } = useQuery({
     queryKey: ['assets', 'dashboard-recent'],
     queryFn: () => getAssets({ limit: 5, sort: 'createdAt', order: 'desc' }),
     enabled: isTech,
+    staleTime: 30_000,
   });
 
-  const { data: networks = [] } = useQuery({
-    queryKey: ['networks'],
-    queryFn: () => getNetworks(),
-    enabled: isTech,
-  });
+  const openTickets = stats?.tickets.open ?? 0;
+  const inProgressTickets = stats?.tickets.inProgress ?? 0;
+  const totalOpen = openTickets + inProgressTickets;
 
-  const { data: racks = [] } = useQuery({
-    queryKey: ['racks'],
-    queryFn: listRacks,
-    enabled: isTech,
-  });
-
-  const { data: docsData } = useQuery({
-    queryKey: ['articles', 'dashboard'],
-    queryFn: () => getArticles({ limit: 1 }),
-    enabled: isTech,
-  });
-
-  const { data: usersData } = useQuery({
-    queryKey: ['users', 'dashboard'],
-    queryFn: () => getUsers({ limit: 1 }),
-    enabled: isAdmin,
-  });
-
-  const openTickets = ticketsData?.meta?.total ?? 0;
-  const activeAssets = assetSummary?.byStatus?.find((s: { _id: string }) => s._id === 'active')?.count ?? 0;
-  const totalArticles = docsData?.meta?.total ?? 0;
-  const totalUsers = usersData?.meta?.total ?? 0;
+  // Sort open-by-priority in display order
+  const byPriority = PRIORITY_ORDER.map((p) => ({
+    priority: p,
+    count: stats?.tickets.byPriority?.find((x) => x._id === p)?.count ?? 0,
+  })).filter((x) => x.count > 0);
 
   return (
     <div className="space-y-6">
@@ -155,23 +178,38 @@ export function DashboardPage() {
         <p className="text-sm text-muted-foreground mt-0.5">Welcome back, {user?.displayName}</p>
       </div>
 
+      {/* Warranty expiry alert */}
+      {isTech && (stats?.assets?.warrantyExpiringSoon ?? 0) > 0 && (
+        <Link to="/assets?warrantyExpiry=30">
+          <div className="flex items-center gap-2 rounded-lg border border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-700 px-4 py-2.5 text-sm text-yellow-800 dark:text-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors">
+            <ShieldAlert className="h-4 w-4 shrink-0" />
+            <span>
+              <span className="font-semibold">{stats!.assets!.warrantyExpiringSoon} asset{stats!.assets!.warrantyExpiringSoon !== 1 ? 's' : ''}</span>
+              {' '}with warranty expiring in the next 30 days
+            </span>
+            <ArrowRight className="h-3.5 w-3.5 ml-auto shrink-0" />
+          </div>
+        </Link>
+      )}
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <StatCard title="Open Tickets" value={openTickets} icon={Ticket} to="/tickets" colour="text-orange-500" />
+        <StatCard title="Open Tickets" value={openTickets} icon={Ticket} to="/tickets?status=open" colour="text-orange-500" />
+        <StatCard title="In Progress" value={inProgressTickets} icon={Clock} to="/tickets?status=in_progress" colour="text-blue-500" />
         {isTech && (
           <>
-            <StatCard title="Active Assets" value={activeAssets} icon={Monitor} to="/assets" colour="text-blue-500" />
-            <StatCard title="Networks" value={(networks as any[]).length} icon={Globe} to="/network/networks" colour="text-green-500" />
-            <StatCard title="Racks" value={(racks as any[]).length} icon={Server} to="/network/racks" colour="text-purple-500" />
-            <StatCard title="Docs" value={totalArticles} icon={BookOpen} to="/docs" colour="text-yellow-500" />
-            {isAdmin && (
-              <StatCard title="Users" value={totalUsers} icon={Users} to="/admin/users" colour="text-pink-500" />
-            )}
+            <StatCard title="Active Assets" value={stats?.assets?.active ?? '—'} icon={Monitor} to="/assets" colour="text-emerald-500" />
+            <StatCard title="Vault Credentials" value={stats?.vault?.total ?? '—'} icon={KeyRound} to="/vault" colour="text-indigo-500" />
+            <StatCard title="Networks" value={stats?.networks?.total ?? '—'} icon={Globe} to="/network/networks" colour="text-cyan-500" />
+            <StatCard title="Docs" value={stats?.articles?.total ?? '—'} icon={BookOpen} to="/docs" colour="text-yellow-500" />
           </>
+        )}
+        {isAdmin && (
+          <StatCard title="Active Users" value={stats?.users?.total ?? '—'} icon={Users} to="/admin/users" colour="text-pink-500" />
         )}
       </div>
 
-      {/* Main content grid */}
+      {/* Tickets row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Recent open tickets */}
@@ -211,15 +249,41 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Module quick links */}
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground px-1">Quick access</p>
-          <ModuleCard title="Tickets" description="Support requests & incidents" icon={Ticket} to="/tickets" colour="bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400" />
-          <ModuleCard title="Assets" description="Hardware & software inventory" icon={Monitor} to="/assets" colour="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" />
-          <ModuleCard title="Networks" description="IP ranges, VLANs & subnets" icon={Globe} to="/network/networks" colour="bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400" />
-          <ModuleCard title="Racks" description="Physical rack layouts" icon={Server} to="/network/racks" colour="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400" />
-          <ModuleCard title="Docs" description="Knowledge base & articles" icon={BookOpen} to="/docs" colour="bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400" />
-        </div>
+        {/* Open tickets by priority */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Open by Priority</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {byPriority.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No open tickets.</p>
+            ) : (
+              <div className="space-y-3">
+                {byPriority.map(({ priority, count }) => (
+                  <Link
+                    key={priority}
+                    to={`/tickets?status=open&priority=${priority}`}
+                    className="block group"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm capitalize">{priority}</span>
+                      <span className="text-sm font-medium tabular-nums">{count}</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${PRIORITY_COLOUR[priority]}`}
+                        style={{ width: `${Math.round((count / totalOpen) * 100)}%` }}
+                      />
+                    </div>
+                  </Link>
+                ))}
+                <p className="text-xs text-muted-foreground pt-1">
+                  {totalOpen} total open
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Tech/admin lower section */}
@@ -235,13 +299,13 @@ export function DashboardPage() {
               </Link>
             </CardHeader>
             <CardContent className="p-0">
-              {(assetSummary?.byType ?? []).length === 0 ? (
+              {(stats?.assets?.byType ?? []).length === 0 ? (
                 <p className="text-sm text-muted-foreground px-6 py-4">No assets yet.</p>
               ) : (
                 <div className="divide-y">
-                  {(assetSummary?.byType ?? [])
-                    .sort((a: { count: number }, b: { count: number }) => b.count - a.count)
-                    .map((row: { _id: string; count: number }) => {
+                  {[...(stats?.assets?.byType ?? [])]
+                    .sort((a, b) => b.count - a.count)
+                    .map((row) => {
                       const Icon = TYPE_ICON[row._id] ?? Package;
                       return (
                         <Link
@@ -275,7 +339,9 @@ export function DashboardPage() {
                 <p className="text-sm text-muted-foreground px-6 py-4">No assets yet.</p>
               ) : (
                 <div className="divide-y">
-                  {(recentAssets?.data ?? []).map((asset: { id: string; assetTag: string; name: string; type: string; status: string }) => {
+                  {(recentAssets?.data ?? []).map((asset: {
+                    id: string; assetTag: string; name: string; type: string; status: string;
+                  }) => {
                     const Icon = TYPE_ICON[asset.type] ?? Package;
                     return (
                       <Link
@@ -298,7 +364,29 @@ export function DashboardPage() {
               )}
             </CardContent>
           </Card>
+        </div>
+      )}
 
+      {/* Admin: integration sync status */}
+      {isAdmin && stats?.integrations && (
+        <div>
+          <p className="text-sm font-medium text-muted-foreground mb-3">Integration Sync</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <IntegrationStatusCard
+              name="Microsoft Intune"
+              enabled={stats.integrations.intune.enabled}
+              lastSyncAt={stats.integrations.intune.lastSyncAt}
+              lastSyncStatus={stats.integrations.intune.lastSyncStatus}
+              to="/admin/integrations"
+            />
+            <IntegrationStatusCard
+              name="Cisco Meraki"
+              enabled={stats.integrations.meraki.enabled}
+              lastSyncAt={stats.integrations.meraki.lastSyncAt}
+              lastSyncStatus={stats.integrations.meraki.lastSyncStatus}
+              to="/admin/integrations"
+            />
+          </div>
         </div>
       )}
     </div>
