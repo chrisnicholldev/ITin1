@@ -1,7 +1,30 @@
 import { Asset } from '../../assets/asset.model.js';
 import { SyncLog, type ISyncLogDocument } from '../intune/intune.service.js';
-import { getAdComputers } from './ad.client.js';
-import { mapComputerToAsset } from './ad.mapper.js';
+import { getAdComputers, type AdComputer } from './ad.client.js';
+import { mapComputerToAsset, buildAdMergeFields } from './ad.mapper.js';
+
+// Find an existing asset for this AD computer using a 3-step lookup:
+// 1. Own AD asset (subsequent syncs)
+// 2. Any asset with adObjectGUID stored in customFields (Intune record merged on a previous run)
+// 3. Intune asset whose name matches the computer's cn (first-time hostname match for hybrid joined)
+async function findExistingAsset(computer: AdComputer) {
+  const byOwn = await Asset.findOne({
+    externalSource: 'active_directory',
+    externalId: computer.objectGUID,
+  });
+  if (byOwn) return { asset: byOwn, isMerge: false };
+
+  const byGuid = await Asset.findOne({ 'customFields.adObjectGUID': computer.objectGUID });
+  if (byGuid) return { asset: byGuid, isMerge: true };
+
+  const byHostname = await Asset.findOne({
+    externalSource: 'intune',
+    name: { $regex: new RegExp(`^${computer.cn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i') },
+  });
+  if (byHostname) return { asset: byHostname, isMerge: true };
+
+  return null;
+}
 
 export async function runAdSync(triggeredBy: 'schedule' | 'manual'): Promise<ISyncLogDocument> {
   const log = await SyncLog.create({
@@ -30,22 +53,26 @@ export async function runAdSync(triggeredBy: 'schedule' | 'manual'): Promise<ISy
 
     for (const computer of computers) {
       try {
-        const mapped = mapComputerToAsset(computer);
-        const existing = await Asset.findOne({
-          externalSource: 'active_directory',
-          externalId: computer.objectGUID,
-        });
+        const found = await findExistingAsset(computer);
 
-        if (existing) {
-          await Asset.findByIdAndUpdate(existing._id, { $set: mapped });
+        if (found) {
+          if (found.isMerge) {
+            // Merging into an Intune (or other) asset — only write AD-specific fields
+            await Asset.findByIdAndUpdate(found.asset._id, {
+              $set: { ...buildAdMergeFields(computer), lastSyncedAt: new Date() },
+            });
+          } else {
+            // Own AD asset — full update
+            await Asset.findByIdAndUpdate(found.asset._id, {
+              $set: mapComputerToAsset(computer),
+            });
+          }
           updated++;
         } else {
+          // No existing asset — create a new AD-owned one (pure on-prem device)
+          const mapped = mapComputerToAsset(computer);
           const assetTag = `AD-${computer.cn.slice(0, 12).toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
-          await Asset.create({
-            ...mapped,
-            assetTag,
-            customFields: mapped.customFields ?? {},
-          });
+          await Asset.create({ ...mapped, assetTag, customFields: mapped.customFields ?? {} });
           created++;
         }
       } catch (err) {

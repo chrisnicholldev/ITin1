@@ -43,11 +43,30 @@ export function mapComputerToAsset(computer: AdComputer) {
     externalId: computer.objectGUID,
     lastSyncedAt: new Date(),
     customFields: {
+      adObjectGUID: computer.objectGUID,
       adDn: computer.dn,
       adCn: computer.cn,
       dNSHostName: computer.dNSHostName || undefined,
       lastLogon: lastLogon?.toISOString() || undefined,
       whenCreated: computer.whenCreated || undefined,
     },
+  };
+}
+
+// Fields written into an existing Intune asset when merging — does NOT overwrite
+// Intune-owned fields like externalSource, externalId, name, manufacturer, model, etc.
+export function buildAdMergeFields(computer: AdComputer) {
+  const lastLogon = filetimeToDate(computer.lastLogonTimestamp);
+
+  return {
+    // Store the AD GUID so future syncs find this record at step 2 (not step 3)
+    'customFields.adObjectGUID': computer.objectGUID,
+    'customFields.adDn': computer.dn,
+    'customFields.adCn': computer.cn,
+    'customFields.dNSHostName': computer.dNSHostName || undefined,
+    'customFields.lastLogon': lastLogon?.toISOString() || undefined,
+    'customFields.whenCreated': computer.whenCreated || undefined,
+    // If AD says disabled, reflect that — Intune may not know about on-prem account state
+    ...(isDisabled(computer.userAccountControl) ? { status: AssetStatus.INACTIVE } : {}),
   };
 }
