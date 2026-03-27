@@ -15,6 +15,7 @@ export interface ICredential {
   category: string;
   linkedAsset?: mongoose.Types.ObjectId;
   linkedVendor?: mongoose.Types.ObjectId;
+  linkedContact?: mongoose.Types.ObjectId;
   tags: string[];
   accessLevel: string;
   allowedUsers: mongoose.Types.ObjectId[];
@@ -43,6 +44,7 @@ const credentialSchema = new mongoose.Schema<ICredentialDocument>(
     },
     linkedAsset: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset' },
     linkedVendor: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor' },
+    linkedContact: { type: mongoose.Schema.Types.ObjectId, ref: 'Contact' },
     tags: [{ type: String }],
     accessLevel: {
       type: String,
@@ -60,6 +62,7 @@ const credentialSchema = new mongoose.Schema<ICredentialDocument>(
 credentialSchema.index({ category: 1 });
 credentialSchema.index({ linkedAsset: 1 });
 credentialSchema.index({ linkedVendor: 1 });
+credentialSchema.index({ linkedContact: 1 });
 credentialSchema.index({ tags: 1 });
 
 export const Credential: Model<ICredentialDocument> = mongoose.model<ICredentialDocument>(

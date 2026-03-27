@@ -1,14 +1,24 @@
 import mongoose, { type Document, type Model } from 'mongoose';
 
+export const CONTACT_SOURCE = {
+  AZURE_AD: 'azure_ad',
+  MANUAL: 'manual',
+} as const;
+
 export interface IContact {
-  azureId: string;
+  source: string;
   displayName: string;
   email?: string;
-  upn: string;
-  department?: string;
+  phone?: string;
+  company?: string;
   jobTitle?: string;
-  accountEnabled: boolean;
-  lastSyncedAt: Date;
+  department?: string;
+  notes?: string;
+  // Azure AD only
+  azureId?: string;
+  upn?: string;
+  accountEnabled?: boolean;
+  lastSyncedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,20 +27,24 @@ export interface IContactDocument extends IContact, Document {}
 
 const contactSchema = new mongoose.Schema<IContactDocument>(
   {
-    azureId: { type: String, required: true, unique: true },
+    source: { type: String, enum: Object.values(CONTACT_SOURCE), default: CONTACT_SOURCE.AZURE_AD, required: true },
     displayName: { type: String, required: true },
     email: String,
-    upn: { type: String, required: true },
-    department: String,
+    phone: String,
+    company: String,
     jobTitle: String,
-    accountEnabled: { type: Boolean, default: true },
-    lastSyncedAt: { type: Date, required: true },
+    department: String,
+    notes: String,
+    azureId: { type: String, sparse: true, unique: true },
+    upn: { type: String, sparse: true },
+    accountEnabled: { type: Boolean },
+    lastSyncedAt: { type: Date },
   },
   { timestamps: true },
 );
 
-contactSchema.index({ upn: 1 });
 contactSchema.index({ email: 1 });
-contactSchema.index({ displayName: 'text', email: 'text', upn: 'text' });
+contactSchema.index({ source: 1 });
+contactSchema.index({ displayName: 'text', email: 'text', upn: 'text', company: 'text' });
 
 export const Contact: Model<IContactDocument> = mongoose.model<IContactDocument>('Contact', contactSchema);

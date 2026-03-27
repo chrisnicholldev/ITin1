@@ -22,6 +22,7 @@ import {
   Building2,
   DatabaseBackup,
   Tag,
+  ContactRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
@@ -35,6 +36,7 @@ const navItems = [
   { href: '/network/racks', label: 'Racks', icon: Server, minRole: 'it_technician' },
   { href: '/network/networks', label: 'Networks', icon: Globe, minRole: 'it_technician' },
   { href: '/vendors', label: 'Vendors', icon: Building2, minRole: 'it_technician' },
+  { href: '/contacts', label: 'Contacts', icon: ContactRound, minRole: 'it_technician' },
   { href: '/admin/locations', label: 'Locations', icon: MapPin, minRole: 'it_admin' },
   { href: '/admin/categories', label: 'Categories', icon: Tag, minRole: 'it_admin' },
   { href: '/admin/users', label: 'Users', icon: Users, minRole: 'it_admin' },

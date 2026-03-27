@@ -20,6 +20,7 @@ import { DocsPage } from '@/pages/docs/DocsPage';
 import { ArticlePage } from '@/pages/docs/ArticlePage';
 import { ArticleEditorPage } from '@/pages/docs/ArticleEditorPage';
 import { VendorsPage } from '@/pages/vendors/VendorsPage';
+import { ContactsPage } from '@/pages/contacts/ContactsPage';
 import { BackupPage } from '@/pages/admin/BackupPage';
 import { SettingsPage } from '@/pages/admin/SettingsPage';
 import { CategoriesPage } from '@/pages/admin/CategoriesPage';
@@ -55,6 +56,7 @@ export const router = createBrowserRouter(
         { path: 'docs/articles/:slug', element: <ArticlePage /> },
         { path: 'docs/articles/:slug/edit', element: <ArticleEditorPage /> },
         { path: 'vendors', element: <VendorsPage /> },
+        { path: 'contacts', element: <ContactsPage /> },
         { path: 'admin/users', element: <UsersPage /> },
         { path: 'admin/integrations', element: <IntegrationsPage /> },
         { path: 'admin/locations', element: <LocationsPage /> },

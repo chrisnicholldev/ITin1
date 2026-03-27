@@ -20,6 +20,9 @@ function toResponse(doc: ICredentialDocument) {
     linkedVendor: obj.linkedVendor
       ? { id: obj.linkedVendor._id?.toString() ?? obj.linkedVendor.id, name: obj.linkedVendor.name }
       : undefined,
+    linkedContact: obj.linkedContact
+      ? { id: obj.linkedContact._id?.toString() ?? obj.linkedContact.id, displayName: obj.linkedContact.displayName, phone: obj.linkedContact.phone, email: obj.linkedContact.email }
+      : undefined,
     tags: doc.tags,
     accessLevel: doc.accessLevel ?? VaultAccessLevel.STAFF,
     allowedUsers: (obj.allowedUsers ?? []).map((u: any) => ({
@@ -70,6 +73,7 @@ export async function listCredentials(userId: string, userRole: string, assetId?
   const docs = await Credential.find(filter)
     .populate('linkedAsset', 'name assetTag')
     .populate('linkedVendor', 'name')
+    .populate('linkedContact', 'displayName phone email')
     .populate('createdBy', 'displayName')
     .populate('updatedBy', 'displayName')
     .populate('allowedUsers', 'displayName email')
@@ -81,6 +85,7 @@ export async function getCredential(id: string) {
   const doc = await Credential.findById(id)
     .populate('linkedAsset', 'name assetTag')
     .populate('linkedVendor', 'name')
+    .populate('linkedContact', 'displayName phone email')
     .populate('createdBy', 'displayName')
     .populate('updatedBy', 'displayName') as ICredentialDocument | null;
   if (!doc) throw new AppError(404, 'Credential not found');
@@ -118,6 +123,7 @@ export async function createCredential(input: CreateCredentialInput, userId: str
     category: input.category,
     linkedAsset: input.linkedAsset ? new mongoose.Types.ObjectId(input.linkedAsset) : undefined,
     linkedVendor: input.linkedVendor ? new mongoose.Types.ObjectId(input.linkedVendor) : undefined,
+    linkedContact: input.linkedContact ? new mongoose.Types.ObjectId(input.linkedContact) : undefined,
     tags: input.tags ?? [],
     accessLevel: input.accessLevel ?? VaultAccessLevel.STAFF,
     allowedUsers: (input.allowedUsers ?? []).map((id) => new mongoose.Types.ObjectId(id)),
@@ -147,6 +153,9 @@ export async function updateCredential(id: string, input: UpdateCredentialInput,
   }
   if (input.linkedVendor !== undefined) {
     updates['linkedVendor'] = input.linkedVendor ? new mongoose.Types.ObjectId(input.linkedVendor) : null;
+  }
+  if (input.linkedContact !== undefined) {
+    updates['linkedContact'] = input.linkedContact ? new mongoose.Types.ObjectId(input.linkedContact) : null;
   }
   if (input.accessLevel !== undefined) updates['accessLevel'] = input.accessLevel;
   if (input.allowedUsers !== undefined) {
