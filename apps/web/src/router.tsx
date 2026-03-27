@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { LoginPage } from '@/pages/auth/LoginPage';
+import { AzureCallbackPage } from '@/pages/auth/AzureCallbackPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { TicketsPage } from '@/pages/tickets/TicketsPage';
 import { TicketDetailPage } from '@/pages/tickets/TicketDetailPage';
@@ -28,6 +29,10 @@ export const router = createBrowserRouter(
     {
       path: '/login',
       element: <LoginPage />,
+    },
+    {
+      path: '/auth/callback',
+      element: <AzureCallbackPage />,
     },
     {
       path: '/',

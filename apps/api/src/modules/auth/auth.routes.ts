@@ -9,6 +9,8 @@ import {
   twoFactorSetup,
   twoFactorConfirm,
   twoFactorDisable,
+  azureRedirect,
+  azureCallback,
 } from './auth.controller.js';
 import { requireAuth } from '../../middleware/auth.middleware.js';
 
@@ -31,6 +33,9 @@ const twoFaLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many attempts — please try again in 15 minutes' },
 });
+
+router.get('/azure', azureRedirect);
+router.get('/azure/callback', azureCallback);
 
 router.post('/login', loginLimiter, login);
 router.post('/refresh', refresh);

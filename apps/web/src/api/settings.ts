@@ -4,6 +4,7 @@ import axios from 'axios';
 export interface OrgSettings {
   orgName: string;
   orgLogoUrl?: string;
+  azureAdEnabled?: boolean;
 }
 
 // Public — no auth required, safe to call on login page too

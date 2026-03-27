@@ -33,6 +33,7 @@ export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 export const AuthProvider = {
   LDAP: 'ldap',
   LOCAL: 'local',
+  AZURE_AD: 'azure_ad',
 } as const;
 export type AuthProvider = (typeof AuthProvider)[keyof typeof AuthProvider];
 

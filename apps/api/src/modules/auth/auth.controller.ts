@@ -15,6 +15,7 @@ import { AppError } from '../../middleware/error.middleware.js';
 import type { AuthenticatedRequest } from '../../middleware/auth.middleware.js';
 import { env } from '../../config/env.js';
 import { LoginSchema } from '@itdesk/shared';
+import { generateState, getAuthorizationUrl, handleAzureCallback } from './azure-auth.service.js';
 
 const REFRESH_COOKIE = 'refresh_token';
 
@@ -94,6 +95,57 @@ export async function me(req: Request, res: Response): Promise<void> {
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   });
+}
+
+// ── Azure AD OAuth ────────────────────────────────────────────────────────────
+
+const AZURE_STATE_COOKIE = 'azure_oauth_state';
+const AZURE_STATE_TTL = 10 * 60 * 1000; // 10 minutes
+
+export function azureRedirect(req: Request, res: Response): void {
+  if (!env.AZURE_AD_ENABLED) {
+    res.status(404).json({ error: 'Azure AD login is not enabled' });
+    return;
+  }
+  const state = generateState();
+  res.cookie(AZURE_STATE_COOKIE, state, {
+    httpOnly: true,
+    secure: env.COOKIE_SECURE ?? env.NODE_ENV === 'production',
+    sameSite: 'lax', // 'lax' required for OAuth redirects
+    maxAge: AZURE_STATE_TTL,
+    path: '/',
+  });
+  res.redirect(getAuthorizationUrl(state));
+}
+
+export async function azureCallback(req: Request, res: Response): Promise<void> {
+  const { code, state, error, error_description } = req.query as Record<string, string>;
+
+  const frontendBase = env.CLIENT_URL;
+
+  if (error) {
+    res.redirect(`${frontendBase}/login?error=${encodeURIComponent(error_description ?? error)}`);
+    return;
+  }
+
+  const storedState = req.cookies[AZURE_STATE_COOKIE] as string | undefined;
+  res.clearCookie(AZURE_STATE_COOKIE, { path: '/' });
+
+  if (!storedState || storedState !== state) {
+    res.redirect(`${frontendBase}/login?error=${encodeURIComponent('Invalid OAuth state — please try again')}`);
+    return;
+  }
+
+  if (!code) {
+    res.redirect(`${frontendBase}/login?error=${encodeURIComponent('No authorisation code received')}`);
+    return;
+  }
+
+  const tokens = await handleAzureCallback(code);
+
+  res.cookie(REFRESH_COOKIE, tokens.refreshToken, cookieOptions);
+  // Pass the short-lived access token to the frontend via URL fragment (never lands in server logs)
+  res.redirect(`${frontendBase}/auth/callback#token=${tokens.accessToken}`);
 }
 
 // ── 2FA endpoints ─────────────────────────────────────────────────────────────

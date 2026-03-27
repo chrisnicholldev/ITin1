@@ -191,7 +191,7 @@ export async function disableTwoFactor(userId: string, code: string): Promise<vo
   });
 }
 
-async function issueTokens(userId: string, role: string): Promise<{ accessToken: string; refreshToken: string }> {
+export async function issueTokens(userId: string, role: string): Promise<{ accessToken: string; refreshToken: string }> {
   const accessToken = await signAccessToken({ sub: userId, role });
   const refreshToken = generateRefreshToken();
   const refreshTokenHash = await hashToken(refreshToken);

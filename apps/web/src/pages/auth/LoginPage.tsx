@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Ticket, Loader2, ShieldCheck, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,17 +13,23 @@ type Stage = 'credentials' | 'verify' | 'setup' | 'recovery';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { setTokens, setUser } = useAuthStore();
 
   const [orgName, setOrgName] = useState('IT Helpdesk');
   const [orgLogoUrl, setOrgLogoUrl] = useState<string | undefined>();
+  const [azureAdEnabled, setAzureAdEnabled] = useState(false);
   useEffect(() => {
-    getOrgSettings().then((s) => { setOrgName(s.orgName); setOrgLogoUrl(s.orgLogoUrl); }).catch(() => {});
+    getOrgSettings().then((s) => {
+      setOrgName(s.orgName);
+      setOrgLogoUrl(s.orgLogoUrl);
+      setAzureAdEnabled(s.azureAdEnabled ?? false);
+    }).catch(() => {});
   }, []);
 
   const [stage, setStage] = useState<Stage>('credentials');
   const [tempToken, setTempToken] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(searchParams.get('error'));
   const [loading, setLoading] = useState(false);
 
   // credentials stage
@@ -188,6 +194,28 @@ export function LoginPage() {
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Sign in
                 </Button>
+
+                {azureAdEnabled && (
+                  <>
+                    <div className="relative my-1">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs">
+                        <span className="bg-card px-2 text-muted-foreground">or</span>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={() => { window.location.href = '/api/v1/auth/azure'; }}
+                    >
+                      <MicrosoftIcon />
+                      Sign in with Microsoft
+                    </Button>
+                  </>
+                )}
               </form>
             )}
 
@@ -306,5 +334,16 @@ function ErrorBox({ message }: { message: string }) {
     <div className="rounded-md bg-destructive/10 border border-destructive/20 px-3 py-2">
       <p className="text-sm text-destructive">{message}</p>
     </div>
+  );
+}
+
+function MicrosoftIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+      <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+      <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+      <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+    </svg>
   );
 }

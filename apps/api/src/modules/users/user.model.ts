@@ -15,6 +15,7 @@ export interface IUser {
   isActive: boolean;
   lastLogin?: Date;
   ldapDn?: string;
+  azureId?: string;
   refreshTokenHash?: string;
   twoFactorEnabled: boolean;
   twoFactorSecret?: string;
@@ -49,6 +50,7 @@ const userSchema = new mongoose.Schema<IUserDocument>(
     isActive: { type: Boolean, default: true },
     lastLogin: Date,
     ldapDn: String,
+    azureId: { type: String, sparse: true },
     refreshTokenHash: { type: String, select: false },
     twoFactorEnabled: { type: Boolean, default: false },
     twoFactorSecret: { type: String, select: false },

@@ -44,6 +44,14 @@ const EnvSchema = z.object({
   MERAKI_ORG_ID: z.string().optional(),
   MERAKI_SYNC_SCHEDULE: z.string().optional(),
 
+  AZURE_AD_ENABLED: z.coerce.boolean().default(false),
+  AZURE_AD_CLIENT_ID: z.string().optional(),
+  AZURE_AD_CLIENT_SECRET: z.string().optional(),
+  AZURE_AD_TENANT_ID: z.string().optional(),
+  AZURE_AD_REDIRECT_URI: z.string().optional(),
+  AZURE_AD_ADMIN_GROUP_ID: z.string().optional(),
+  AZURE_AD_TECH_GROUP_ID: z.string().optional(),
+
   COOKIE_SECURE: z.coerce.boolean().optional(),
 
   UPLOAD_DIR: z.string().default('./uploads'),

@@ -31,7 +31,8 @@ const logoUpload = multer({
 
 // ── Org settings (GET is public so login page can show org name) ──────────────
 router.get('/settings', async (_req: Request, res: Response) => {
-  res.json(await getOrgSettings());
+  const settings = await getOrgSettings();
+  res.json({ ...settings, azureAdEnabled: env.AZURE_AD_ENABLED });
 });
 
 router.patch('/settings', requireAuth, requireAdmin, async (req: Request, res: Response) => {
