@@ -167,8 +167,9 @@ export async function getIntuneRuntimeConfig() {
     ? decryptField(doc.intune.clientSecretEnc)
     : env.INTUNE_CLIENT_SECRET;
   const enabled = doc?.intune?.enabled ?? env.INTUNE_ENABLED;
+  const syncSchedule = doc?.intune?.syncSchedule || env.INTUNE_SYNC_SCHEDULE;
 
-  return { enabled, tenantId, clientId, clientSecret };
+  return { enabled, tenantId, clientId, clientSecret, syncSchedule };
 }
 
 export async function getMerakiRuntimeConfig() {
@@ -178,8 +179,9 @@ export async function getMerakiRuntimeConfig() {
     : env.MERAKI_API_KEY;
   const orgId = doc?.meraki?.orgId || env.MERAKI_ORG_ID;
   const enabled = doc?.meraki?.enabled ?? env.MERAKI_ENABLED;
+  const syncSchedule = doc?.meraki?.syncSchedule || env.MERAKI_SYNC_SCHEDULE;
 
-  return { enabled, apiKey, orgId };
+  return { enabled, apiKey, orgId, syncSchedule };
 }
 
 export async function getAdRuntimeConfig() {

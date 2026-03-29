@@ -3,7 +3,7 @@ import { env } from '../config/env.js';
 import { runIntuneSync } from '../modules/integrations/intune/intune.service.js';
 import { runMerakiSync } from '../modules/integrations/meraki/meraki.service.js';
 import { runAdSync } from '../modules/integrations/ad/ad.service.js';
-import { getAdRuntimeConfig } from '../modules/admin/integration-config.service.js';
+import { getIntuneRuntimeConfig, getMerakiRuntimeConfig, getAdRuntimeConfig } from '../modules/admin/integration-config.service.js';
 
 // BullMQ requires its own connection config — passing the shared ioredis instance
 // causes version mismatch errors due to pnpm deduplication. Use URL-parsed options instead.
@@ -55,71 +55,73 @@ let merakiWorker: Worker | null = null;
 let adWorker: Worker | null = null;
 
 export async function startWorkers() {
+  const [intuneCfg, merakiCfg, adCfg] = await Promise.all([
+    getIntuneRuntimeConfig(),
+    getMerakiRuntimeConfig(),
+    getAdRuntimeConfig(),
+  ]);
+
   // ── Intune worker ──────────────────────────────────────────────────────────
 
-  if (env.INTUNE_ENABLED) {
-    intuneWorker = new Worker(
-      INTUNE_QUEUE,
-      async (job: Job) => {
-        const triggeredBy = job.data?.triggeredBy ?? 'schedule';
-        console.log(`[intune-sync] Starting sync (${triggeredBy})`);
-        const log = await runIntuneSync(triggeredBy);
-        console.log(`[intune-sync] Done — created: ${log.created}, updated: ${log.updated}, failed: ${log.failed}`);
-      },
-      { connection, concurrency: 1 },
+  intuneWorker = new Worker(
+    INTUNE_QUEUE,
+    async (job: Job) => {
+      const triggeredBy = job.data?.triggeredBy ?? 'schedule';
+      console.log(`[intune-sync] Starting sync (${triggeredBy})`);
+      const log = await runIntuneSync(triggeredBy);
+      console.log(`[intune-sync] Done — created: ${log.created}, updated: ${log.updated}, failed: ${log.failed}`);
+    },
+    { connection, concurrency: 1 },
+  );
+
+  intuneWorker.on('failed', (job, err) => {
+    console.error(`[intune-sync] Job ${job?.id} failed:`, err.message);
+  });
+
+  const intuneSchedule = intuneCfg.syncSchedule;
+  if (intuneSchedule) {
+    await intuneQueue.upsertJobScheduler(
+      INTUNE_REPEAT_JOB_KEY,
+      { pattern: intuneSchedule },
+      { name: 'sync', data: { triggeredBy: 'schedule' } },
     );
-
-    intuneWorker.on('failed', (job, err) => {
-      console.error(`[intune-sync] Job ${job?.id} failed:`, err.message);
-    });
-
-    if (env.INTUNE_SYNC_SCHEDULE) {
-      await intuneQueue.upsertJobScheduler(
-        INTUNE_REPEAT_JOB_KEY,
-        { pattern: env.INTUNE_SYNC_SCHEDULE },
-        { name: 'sync', data: { triggeredBy: 'schedule' } },
-      );
-      console.log(`[intune-sync] Worker started, schedule: ${env.INTUNE_SYNC_SCHEDULE}`);
-    } else {
-      await intuneQueue.removeJobScheduler(INTUNE_REPEAT_JOB_KEY);
-      console.log('[intune-sync] Worker started, no schedule (manual only)');
-    }
+    console.log(`[intune-sync] Worker started, schedule: ${intuneSchedule}`);
+  } else {
+    await intuneQueue.removeJobScheduler(INTUNE_REPEAT_JOB_KEY);
+    console.log('[intune-sync] Worker started, no schedule (manual only)');
   }
 
   // ── Meraki worker ──────────────────────────────────────────────────────────
 
-  if (env.MERAKI_ENABLED) {
-    merakiWorker = new Worker(
-      MERAKI_QUEUE,
-      async (job: Job) => {
-        const triggeredBy = job.data?.triggeredBy ?? 'schedule';
-        console.log(`[meraki-sync] Starting sync (${triggeredBy})`);
-        const log = await runMerakiSync(triggeredBy);
-        console.log(`[meraki-sync] Done — created: ${log.created}, updated: ${log.updated}, failed: ${log.failed}`);
-      },
-      { connection, concurrency: 1 },
+  merakiWorker = new Worker(
+    MERAKI_QUEUE,
+    async (job: Job) => {
+      const triggeredBy = job.data?.triggeredBy ?? 'schedule';
+      console.log(`[meraki-sync] Starting sync (${triggeredBy})`);
+      const log = await runMerakiSync(triggeredBy);
+      console.log(`[meraki-sync] Done — created: ${log.created}, updated: ${log.updated}, failed: ${log.failed}`);
+    },
+    { connection, concurrency: 1 },
+  );
+
+  merakiWorker.on('failed', (job, err) => {
+    console.error(`[meraki-sync] Job ${job?.id} failed:`, err.message);
+  });
+
+  const merakiSchedule = merakiCfg.syncSchedule;
+  if (merakiSchedule) {
+    await merakiQueue.upsertJobScheduler(
+      MERAKI_REPEAT_JOB_KEY,
+      { pattern: merakiSchedule },
+      { name: 'sync', data: { triggeredBy: 'schedule' } },
     );
-
-    merakiWorker.on('failed', (job, err) => {
-      console.error(`[meraki-sync] Job ${job?.id} failed:`, err.message);
-    });
-
-    if (env.MERAKI_SYNC_SCHEDULE) {
-      await merakiQueue.upsertJobScheduler(
-        MERAKI_REPEAT_JOB_KEY,
-        { pattern: env.MERAKI_SYNC_SCHEDULE },
-        { name: 'sync', data: { triggeredBy: 'schedule' } },
-      );
-      console.log(`[meraki-sync] Worker started, schedule: ${env.MERAKI_SYNC_SCHEDULE}`);
-    } else {
-      await merakiQueue.removeJobScheduler(MERAKI_REPEAT_JOB_KEY);
-      console.log('[meraki-sync] Worker started, no schedule (manual only)');
-    }
+    console.log(`[meraki-sync] Worker started, schedule: ${merakiSchedule}`);
+  } else {
+    await merakiQueue.removeJobScheduler(MERAKI_REPEAT_JOB_KEY);
+    console.log('[meraki-sync] Worker started, no schedule (manual only)');
   }
 
   // ── AD worker ──────────────────────────────────────────────────────────────
-
-  const adCfg = await getAdRuntimeConfig();
   adWorker = new Worker(
     AD_QUEUE,
     async (job: Job) => {
