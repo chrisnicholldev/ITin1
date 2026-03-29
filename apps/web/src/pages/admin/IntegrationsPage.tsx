@@ -12,9 +12,10 @@ import {
   getIntuneStatus, triggerIntuneSync, getIntuneLogs,
   getMerakiStatus, triggerMerakiSync, getMerakiLogs,
   getAdStatus, triggerAdSync, getAdLogs,
-  getIntegrationConfig, updateIntuneConfig, updateMerakiConfig, updateAdConfig,
+  getIntegrationConfig, updateIntuneConfig, updateMerakiConfig, updateAdConfig, updateSmtpConfig,
   type IntegrationConfig,
 } from '@/api/integrations';
+import { Mail } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -439,6 +440,110 @@ function IntegrationCard({
   );
 }
 
+// ── SMTP config card (standalone — no sync) ───────────────────────────────────
+
+function SmtpConfigCard({ config }: { config: IntegrationConfig['smtp'] }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [enabled, setEnabled] = useState(config.enabled);
+  const [host, setHost] = useState(config.host);
+  const [port, setPort] = useState(String(config.port || 587));
+  const [user, setUser] = useState(config.user);
+  const [pass, setPass] = useState('');
+  const [from, setFrom] = useState(config.from);
+
+  const { mutate, isPending, error } = useMutation({
+    mutationFn: () => updateSmtpConfig({ enabled, host, port: Number(port), user, pass, from }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['integration-config'] });
+      setOpen(false);
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Mail className="h-4 w-4" /> Email (SMTP)
+            </CardTitle>
+            <CardDescription>Outbound email for ticket notifications</CardDescription>
+          </div>
+          <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
+            config.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+          }`}>
+            {config.enabled ? 'Enabled' : 'Disabled'}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 text-sm">
+          <div>
+            <p className="text-muted-foreground text-xs mb-0.5">Host</p>
+            <p className="font-medium">{config.host || <span className="text-muted-foreground">Not set</span>}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs mb-0.5">Port</p>
+            <p>{config.port || '—'}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs mb-0.5">Password</p>
+            <p>{config.hasPassword ? <span className="text-green-700">Saved</span> : <span className="text-amber-600">Not set</span>}</p>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setOpen(!open)} className="gap-1.5">
+            <Settings className="h-3.5 w-3.5" />
+            Configure
+            {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </Button>
+        </div>
+
+        {open && (
+          <div className="border rounded-md p-4 bg-muted/20 space-y-3">
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="smtp-enabled" className="h-4 w-4"
+                checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+              <Label htmlFor="smtp-enabled" className="font-normal cursor-pointer">Enable email notifications</Label>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>SMTP Host</Label>
+                <Input value={host} onChange={(e) => setHost(e.target.value)} placeholder="smtp.office365.com" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Port</Label>
+                <Input value={port} onChange={(e) => setPort(e.target.value)} placeholder="587" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Username</Label>
+                <Input value={user} onChange={(e) => setUser(e.target.value)} placeholder="itdesk@yourdomain.com" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Password {config.hasPassword && <span className="text-green-700 text-xs">(saved)</span>}</Label>
+                <SecretInput value={pass} onChange={setPass}
+                  placeholder="SMTP password or app password" hasExisting={config.hasPassword} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>From Address</Label>
+                <Input value={from} onChange={(e) => setFrom(e.target.value)} placeholder="IT Helpdesk <itdesk@yourdomain.com>" />
+              </div>
+            </div>
+            {error && <p className="text-xs text-destructive">{(error as any)?.response?.data?.error ?? 'Failed to save'}</p>}
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => mutate()} disabled={isPending}>
+                {isPending ? 'Saving…' : 'Save SMTP Config'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function IntegrationsPage() {
@@ -525,6 +630,9 @@ export function IntegrationsPage() {
     enabled: false, url: '', bindDn: '', hasBindCredentials: false,
     searchBase: '', computerFilter: '(objectClass=computer)', syncSchedule: '',
   };
+  const defaultSmtpConfig = {
+    enabled: false, host: '', port: 587, user: '', hasPassword: false, from: '',
+  };
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -572,6 +680,8 @@ export function IntegrationsPage() {
           />
         }
       />
+
+      <SmtpConfigCard config={integrationConfig?.smtp ?? defaultSmtpConfig} />
 
       <IntegrationCard
         title="Active Directory"

@@ -45,6 +45,14 @@ export async function getIntegrationConfigMasked() {
       computerFilter: doc?.ad?.computerFilter ?? '(objectClass=computer)',
       syncSchedule: doc?.ad?.syncSchedule ?? '',
     },
+    smtp: {
+      enabled: doc?.smtp?.enabled ?? env.SMTP_ENABLED,
+      host: doc?.smtp?.host ?? env.SMTP_HOST ?? '',
+      port: doc?.smtp?.port ?? env.SMTP_PORT ?? 587,
+      user: doc?.smtp?.user ?? env.SMTP_USER ?? '',
+      hasPassword: !!(doc?.smtp?.passEnc ?? env.SMTP_PASS),
+      from: doc?.smtp?.from ?? env.SMTP_FROM ?? '',
+    },
   };
 }
 
@@ -157,6 +165,46 @@ export async function updateAdConfig(input: {
   return getIntegrationConfigMasked();
 }
 
+export async function updateSmtpConfig(input: {
+  enabled?: boolean;
+  host?: string;
+  port?: number;
+  user?: string;
+  pass?: string; // empty = keep existing
+  from?: string;
+}) {
+  const existing = await getDoc();
+  const update: Record<string, unknown> = { _id: INTEGRATION_CONFIG_ID };
+
+  const smtp: Record<string, unknown> = {
+    enabled: input.enabled ?? existing?.smtp?.enabled ?? false,
+    host: input.host ?? existing?.smtp?.host,
+    port: input.port ?? existing?.smtp?.port,
+    user: input.user ?? existing?.smtp?.user,
+    passEnc: existing?.smtp?.passEnc,
+    from: input.from ?? existing?.smtp?.from,
+  };
+
+  if (input.pass?.trim()) {
+    smtp['passEnc'] = encryptField(input.pass.trim());
+  }
+
+  update['smtp'] = smtp;
+  if (existing) {
+    update['intune'] = existing.intune;
+    update['meraki'] = existing.meraki;
+    update['ad'] = existing.ad;
+  }
+
+  await IntegrationConfig.findByIdAndUpdate(
+    INTEGRATION_CONFIG_ID,
+    { $set: update },
+    { upsert: true, new: true },
+  );
+
+  return getIntegrationConfigMasked();
+}
+
 // ── Runtime config (used by clients — DB takes precedence over env) ───────────
 
 export async function getIntuneRuntimeConfig() {
@@ -182,6 +230,18 @@ export async function getMerakiRuntimeConfig() {
   const syncSchedule = doc?.meraki?.syncSchedule || env.MERAKI_SYNC_SCHEDULE;
 
   return { enabled, apiKey, orgId, syncSchedule };
+}
+
+export async function getSmtpRuntimeConfig() {
+  const doc = await getDoc();
+  const enabled = doc?.smtp?.enabled ?? env.SMTP_ENABLED;
+  const host = doc?.smtp?.host || env.SMTP_HOST;
+  const port = doc?.smtp?.port ?? env.SMTP_PORT ?? 587;
+  const user = doc?.smtp?.user || env.SMTP_USER;
+  const pass = doc?.smtp?.passEnc ? decryptField(doc.smtp.passEnc) : env.SMTP_PASS;
+  const from = doc?.smtp?.from || env.SMTP_FROM;
+
+  return { enabled, host, port, user, pass, from };
 }
 
 export async function getAdRuntimeConfig() {

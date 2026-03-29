@@ -70,6 +70,14 @@ export interface IntegrationConfig {
     computerFilter: string;
     syncSchedule: string;
   };
+  smtp: {
+    enabled: boolean;
+    host: string;
+    port: number;
+    user: string;
+    hasPassword: boolean;
+    from: string;
+  };
 }
 
 export async function getIntegrationConfig(): Promise<IntegrationConfig> {
@@ -108,5 +116,17 @@ export async function updateAdConfig(payload: {
   syncSchedule: string;
 }): Promise<IntegrationConfig> {
   const { data } = await apiClient.put('/admin/integrations/config/ad', payload);
+  return data;
+}
+
+export async function updateSmtpConfig(payload: {
+  enabled: boolean;
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+  from: string;
+}): Promise<IntegrationConfig> {
+  const { data } = await apiClient.put('/admin/integrations/config/smtp', payload);
   return data;
 }

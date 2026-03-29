@@ -5,7 +5,7 @@ import fs from 'fs';
 import { requireAuth, requireAdmin } from '../../middleware/auth.middleware.js';
 import * as backup from './backup.controller.js';
 import { getOrgSettings, updateOrgSettings } from './settings.model.js';
-import { getIntegrationConfigMasked, updateIntuneConfig, updateMerakiConfig, updateAdConfig } from './integration-config.service.js';
+import { getIntegrationConfigMasked, updateIntuneConfig, updateMerakiConfig, updateAdConfig, updateSmtpConfig } from './integration-config.service.js';
 import { applyIntuneSchedule, applyMerakiSchedule, applyAdSchedule } from '../../jobs/queues.js';
 import { env } from '../../config/env.js';
 
@@ -104,6 +104,18 @@ router.put('/integrations/config/ad', requireAuth, requireAdmin, async (req: Req
   });
   await applyAdSchedule(syncSchedule || undefined);
   res.json(result);
+});
+
+router.put('/integrations/config/smtp', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  const { enabled, host, port, user, pass, from } = req.body as Record<string, string>;
+  res.json(await updateSmtpConfig({
+    enabled: enabled === 'true' || enabled === true as any,
+    host: host || undefined,
+    port: port ? Number(port) : undefined,
+    user: user || undefined,
+    pass: pass || undefined,
+    from: from || undefined,
+  }));
 });
 
 // ── Backup / restore ─────────────────────────────────────────────────────────
