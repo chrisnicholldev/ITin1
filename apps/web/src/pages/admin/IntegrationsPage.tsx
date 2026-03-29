@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   RefreshCw, CheckCircle2, XCircle, Clock, Plug,
-  ChevronLeft, ChevronRight, Settings, Eye, EyeOff, ChevronDown, ChevronUp,
+  ChevronLeft, ChevronRight, Settings, Eye, EyeOff, ChevronDown, ChevronUp, Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,6 +77,32 @@ function SecretInput({ value, onChange, placeholder, hasExisting }: {
   );
 }
 
+// ── Setup guide ───────────────────────────────────────────────────────────────
+
+function SetupGuide({ title, steps }: { title: string; steps: (string | React.ReactNode)[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30 text-sm">
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 px-3 py-2 text-blue-800 dark:text-blue-300 font-medium hover:bg-blue-100 dark:hover:bg-blue-950/50 rounded-md transition-colors"
+        onClick={() => setOpen(!open)}
+      >
+        <Info className="h-3.5 w-3.5 shrink-0" />
+        <span className="flex-1 text-left">{title}</span>
+        {open ? <ChevronUp className="h-3.5 w-3.5 shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0" />}
+      </button>
+      {open && (
+        <ol className="px-4 pb-3 pt-1 space-y-1.5 text-blue-900 dark:text-blue-200 list-decimal list-inside">
+          {steps.map((step, i) => (
+            <li key={i} className="leading-snug">{step}</li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
 // ── Intune config form ────────────────────────────────────────────────────────
 
 function IntuneConfigForm({ config, onSaved }: { config: IntegrationConfig['intune']; onSaved: () => void }) {
@@ -98,6 +124,14 @@ function IntuneConfigForm({ config, onSaved }: { config: IntegrationConfig['intu
 
   return (
     <div className="space-y-3 pt-2">
+      <SetupGuide title="How to set up Microsoft Intune integration" steps={[
+        <>Go to <strong>portal.azure.com</strong> → Azure Active Directory → App registrations → New registration. Name it (e.g. "ITDesk Sync") and register.</>,
+        <>Under the new app, go to <strong>Certificates &amp; secrets</strong> → New client secret. Copy the value immediately — it won't be shown again.</>,
+        <>Go to <strong>API permissions</strong> → Add a permission → Microsoft Graph → Application permissions. Add <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">DeviceManagementManagedDevices.Read.All</code> and <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">User.Read.All</code>.</>,
+        <>Click <strong>Grant admin consent</strong> for your organisation.</>,
+        <>Copy the <strong>Tenant ID</strong> and <strong>Client ID</strong> from the app's Overview page and paste them below.</>,
+        <>The sync schedule uses cron syntax — e.g. <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">0 */6 * * *</code> syncs every 6 hours.</>,
+      ]} />
       <div className="flex items-center gap-2">
         <input type="checkbox" id="intune-enabled" className="h-4 w-4"
           checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
@@ -152,6 +186,13 @@ function MerakiConfigForm({ config, onSaved }: { config: IntegrationConfig['mera
 
   return (
     <div className="space-y-3 pt-2">
+      <SetupGuide title="How to set up Cisco Meraki integration" steps={[
+        <>Log in to <strong>dashboard.meraki.com</strong> and go to your profile (top-right).</>,
+        <>Scroll to the <strong>API access</strong> section and click <strong>Generate new API key</strong>. Copy it — it won't be shown again.</>,
+        <>Ensure API access is enabled for your organisation under <strong>Organisation → Settings → Dashboard API access</strong>.</>,
+        <>The Organisation ID is optional — leave it blank to auto-detect. You can find it under <strong>Organisation → Settings</strong> in the URL or overview.</>,
+        <>The sync will import all MX, MS, MR, and MG devices as assets with type Network Device.</>,
+      ]} />
       <div className="flex items-center gap-2">
         <input type="checkbox" id="meraki-enabled" className="h-4 w-4"
           checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
@@ -205,6 +246,14 @@ function AdConfigForm({ config, onSaved }: { config: IntegrationConfig['ad']; on
 
   return (
     <div className="space-y-3 pt-2">
+      <SetupGuide title="How to set up Active Directory integration" steps={[
+        <>Create a dedicated <strong>read-only service account</strong> in AD (e.g. <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">svc-itdesk</code>) with permission to read computer objects in the target OU(s).</>,
+        <>The <strong>LDAP URL</strong> should point to a domain controller — e.g. <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">ldap://dc.domain.local</code> or <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">ldaps://dc.domain.local:636</code> for SSL.</>,
+        <>The <strong>Search Base</strong> is the root DN to search from — e.g. <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">DC=domain,DC=local</code>. Narrow it to a specific OU if needed: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">OU=Computers,DC=domain,DC=local</code></>,
+        <>The <strong>Bind DN</strong> is the full distinguished name of the service account — e.g. <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">CN=svc-itdesk,OU=Service Accounts,DC=domain,DC=local</code></>,
+        <>The default <strong>Computer Filter</strong> <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">(objectClass=computer)</code> pulls all computers. Scope it further, e.g. <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">(&amp;(objectClass=computer)(operatingSystem=*Server*))</code> for servers only.</>,
+        <>Devices already in Intune are matched by hostname and merged — AD fields are added without overwriting Intune data.</>,
+      ]} />
       <div className="flex items-center gap-2">
         <input type="checkbox" id="ad-enabled" className="h-4 w-4"
           checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
@@ -503,6 +552,13 @@ function SmtpConfigCard({ config }: { config: IntegrationConfig['smtp'] }) {
 
         {open && (
           <div className="border rounded-md p-4 bg-muted/20 space-y-3">
+            <SetupGuide title="How to set up SMTP email" steps={[
+              <>For <strong>Microsoft 365</strong>: use host <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">smtp.office365.com</code>, port <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">587</code>. Username is the full email address. If MFA is enabled on the account, create an <strong>App Password</strong> in the Microsoft account security settings.</>,
+              <>For <strong>Gmail / Google Workspace</strong>: host <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">smtp.gmail.com</code>, port <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">587</code>. Use an <strong>App Password</strong> (requires 2-Step Verification enabled).</>,
+              <>For <strong>on-prem Exchange</strong>: use your Exchange server hostname or IP, port <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">25</code> or <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">587</code>. A relay connector with IP-based auth may allow leaving username/password blank.</>,
+              <>The <strong>From Address</strong> can include a display name: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">IT Helpdesk &lt;itdesk@yourdomain.com&gt;</code></>,
+              <>Emails are sent for: new ticket created, ticket assigned, status changed, and new comment added.</>,
+            ]} />
             <div className="flex items-center gap-2">
               <input type="checkbox" id="smtp-enabled" className="h-4 w-4"
                 checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
