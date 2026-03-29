@@ -4,6 +4,12 @@ import { AppError } from '../../middleware/error.middleware.js';
 import type { CreateTicketInput, UpdateTicketInput, CreateCommentInput } from '@itdesk/shared';
 import { TicketStatus } from '@itdesk/shared';
 import { z } from 'zod';
+import {
+  notifyTicketCreated,
+  notifyTicketAssigned,
+  notifyStatusChanged,
+  notifyCommentAdded,
+} from '../notifications/notification.service.js';
 
 function toResponse(ticket: ITicketDocument) {
   return {
@@ -124,9 +130,21 @@ export async function createTicket(input: CreateTicketInput, submittedBy: string
   const populated = await ticket.populate([
     { path: 'category', select: 'name' },
     { path: 'submittedBy', select: 'displayName email' },
+    { path: 'assignedTo', select: 'displayName email' },
   ]) as ITicketDocument;
 
-  return toResponse(populated);
+  const response = toResponse(populated);
+
+  const sub = populated.submittedBy as any;
+  const asgn = populated.assignedTo as any;
+  const ticketInfo = { id: response.id, ticketNumber: response.ticketNumber, title: response.title, priority: response.priority, status: response.status };
+
+  notifyTicketCreated(ticketInfo, { displayName: sub.displayName, email: sub.email }).catch(() => {});
+  if (asgn) {
+    notifyTicketAssigned(ticketInfo, { displayName: asgn.displayName, email: asgn.email }).catch(() => {});
+  }
+
+  return response;
 }
 
 export async function updateTicket(id: string, input: UpdateTicketInput, viewerRole: string) {
@@ -152,11 +170,24 @@ export async function updateTicket(id: string, input: UpdateTicketInput, viewerR
   const updated = await Ticket.findByIdAndUpdate(id, { $set: updates }, { new: true })
     .populate('category', 'name')
     .populate('submittedBy', 'displayName email')
-    .populate('assignedTo', 'displayName')
+    .populate('assignedTo', 'displayName email')
     .populate('relatedAssets', 'name assetTag') as ITicketDocument | null;
 
   if (!updated) throw new AppError(404, 'Ticket not found');
-  return toResponse(updated);
+
+  const response = toResponse(updated);
+  const sub = updated.submittedBy as any;
+  const asgn = updated.assignedTo as any;
+  const ticketInfo = { id: response.id, ticketNumber: response.ticketNumber, title: response.title, priority: response.priority, status: response.status };
+
+  if (input.status && input.status !== ticket.status) {
+    notifyStatusChanged(ticketInfo, { displayName: sub.displayName, email: sub.email }, input.status).catch(() => {});
+  }
+  if (input.assignedTo && input.assignedTo !== ticket.assignedTo?.toString() && asgn) {
+    notifyTicketAssigned(ticketInfo, { displayName: asgn.displayName, email: asgn.email }).catch(() => {});
+  }
+
+  return response;
 }
 
 export async function addComment(id: string, input: CreateCommentInput, authorId: string, viewerRole: string) {
@@ -177,11 +208,35 @@ export async function addComment(id: string, input: CreateCommentInput, authorId
       },
     },
     { new: true },
-  ).populate('comments.author', 'displayName avatarUrl') as ITicketDocument | null;
+  )
+    .populate('comments.author', 'displayName avatarUrl')
+    .populate('submittedBy', 'displayName email')
+    .populate('assignedTo', 'displayName email') as ITicketDocument | null;
 
   if (!ticket) throw new AppError(404, 'Ticket not found');
 
   const comment = ticket.comments.at(-1)!;
+
+  const sub = ticket.submittedBy as any;
+  const asgn = ticket.assignedTo as any;
+  const commenter = comment.author as any;
+  const ticketInfo = {
+    id: ticket.id,
+    ticketNumber: ticket.ticketNumber,
+    title: ticket.title,
+    priority: ticket.priority,
+    status: ticket.status,
+  };
+
+  notifyCommentAdded(
+    ticketInfo,
+    { displayName: commenter.displayName },
+    input.body,
+    input.isInternal ?? false,
+    { displayName: sub.displayName, email: sub.email },
+    asgn ? { displayName: asgn.displayName, email: asgn.email } : null,
+  ).catch(() => {});
+
   return {
     id: comment._id.toString(),
     author: comment.author,
