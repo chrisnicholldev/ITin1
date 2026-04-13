@@ -19,7 +19,7 @@ async function getTransport(): Promise<{ transport: Transporter; from: string } 
     _transportKey = key;
   }
 
-  return { transport: _transport, from: cfg.from ?? cfg.user ?? 'noreply@itdesk' };
+  return { transport: _transport, from: cfg.from || cfg.user || 'noreply@itdesk' };
 }
 
 export async function sendMail(to: string, subject: string, html: string): Promise<void> {

@@ -130,3 +130,7 @@ export async function updateSmtpConfig(payload: {
   const { data } = await apiClient.put('/admin/integrations/config/smtp', payload);
   return data;
 }
+
+export async function sendSmtpTestEmail(to: string): Promise<void> {
+  await apiClient.post('/admin/integrations/config/smtp/test', { to });
+}

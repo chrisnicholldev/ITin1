@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   RefreshCw, CheckCircle2, XCircle, Clock, Plug,
@@ -12,7 +12,7 @@ import {
   getIntuneStatus, triggerIntuneSync, getIntuneLogs,
   getMerakiStatus, triggerMerakiSync, getMerakiLogs,
   getAdStatus, triggerAdSync, getAdLogs,
-  getIntegrationConfig, updateIntuneConfig, updateMerakiConfig, updateAdConfig, updateSmtpConfig,
+  getIntegrationConfig, updateIntuneConfig, updateMerakiConfig, updateAdConfig, updateSmtpConfig, sendSmtpTestEmail,
   type IntegrationConfig,
 } from '@/api/integrations';
 import { Mail } from 'lucide-react';
@@ -501,12 +501,32 @@ function SmtpConfigCard({ config }: { config: IntegrationConfig['smtp'] }) {
   const [pass, setPass] = useState('');
   const [from, setFrom] = useState(config.from);
 
+  const [testEmail, setTestEmail] = useState('');
+  const [testResult, setTestResult] = useState<'idle' | 'ok' | 'error'>('idle');
+  const [testError, setTestError] = useState('');
+
+  useEffect(() => {
+    if (!open) {
+      setEnabled(config.enabled);
+      setHost(config.host);
+      setPort(String(config.port || 587));
+      setUser(config.user);
+      setFrom(config.from);
+    }
+  }, [config]);
+
   const { mutate, isPending, error } = useMutation({
     mutationFn: () => updateSmtpConfig({ enabled, host, port: Number(port), user, pass, from }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['integration-config'] });
       setOpen(false);
     },
+  });
+
+  const { mutate: sendTest, isPending: testPending } = useMutation({
+    mutationFn: () => sendSmtpTestEmail(testEmail),
+    onSuccess: () => { setTestResult('ok'); setTestError(''); },
+    onError: (err: any) => { setTestResult('error'); setTestError(err?.response?.data?.error ?? 'Failed to send'); },
   });
 
   return (
@@ -549,6 +569,26 @@ function SmtpConfigCard({ config }: { config: IntegrationConfig['smtp'] }) {
             {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
           </Button>
         </div>
+
+        {config.host && (
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <Input
+                type="email"
+                placeholder="Send test email to…"
+                value={testEmail}
+                onChange={(e) => { setTestEmail(e.target.value); setTestResult('idle'); }}
+                className="h-8 text-sm max-w-xs"
+              />
+              <Button size="sm" variant="outline" disabled={testPending || !testEmail}
+                onClick={() => sendTest()}>
+                {testPending ? 'Sending…' : 'Send Test'}
+              </Button>
+            </div>
+            {testResult === 'ok' && <p className="text-xs text-green-700">Test email sent successfully.</p>}
+            {testResult === 'error' && <p className="text-xs text-destructive">{testError}</p>}
+          </div>
+        )}
 
         {open && (
           <div className="border rounded-md p-4 bg-muted/20 space-y-3">

@@ -6,6 +6,7 @@ import { requireAuth, requireAdmin } from '../../middleware/auth.middleware.js';
 import * as backup from './backup.controller.js';
 import { getOrgSettings, updateOrgSettings } from './settings.model.js';
 import { getIntegrationConfigMasked, updateIntuneConfig, updateMerakiConfig, updateAdConfig, updateSmtpConfig } from './integration-config.service.js';
+import { sendMail } from '../../lib/mailer.js';
 import { applyIntuneSchedule, applyMerakiSchedule, applyAdSchedule } from '../../jobs/queues.js';
 import { env } from '../../config/env.js';
 
@@ -116,6 +117,17 @@ router.put('/integrations/config/smtp', requireAuth, requireAdmin, async (req: R
     pass: pass || undefined,
     from: from || undefined,
   }));
+});
+
+router.post('/integrations/config/smtp/test', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  const { to } = req.body as { to?: string };
+  if (!to) { res.status(400).json({ error: 'Recipient email required' }); return; }
+  try {
+    await sendMail(to, 'ITDesk — SMTP test', `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;padding:32px;color:#18181b"><h2>SMTP test successful</h2><p>Your SMTP configuration is working correctly.</p></body></html>`);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? 'Failed to send test email' });
+  }
 });
 
 // ── Backup / restore ─────────────────────────────────────────────────────────
