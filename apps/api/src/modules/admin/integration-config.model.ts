@@ -23,6 +23,14 @@ export interface IIntegrationConfig {
     computerFilter?: string; // (objectClass=computer) — customisable
     syncSchedule?: string;
   };
+  smtp: {
+    enabled: boolean;
+    host?: string;
+    port?: number;
+    user?: string;
+    passEnc?: string; // AES-GCM encrypted JSON
+    from?: string;
+  };
 }
 
 export interface IIntegrationConfigDocument extends IIntegrationConfig, Document {}
@@ -51,6 +59,14 @@ const schema = new mongoose.Schema<IIntegrationConfigDocument>(
       searchBase: String,
       computerFilter: String,
       syncSchedule: String,
+    },
+    smtp: {
+      enabled: { type: Boolean, default: false },
+      host: String,
+      port: Number,
+      user: String,
+      passEnc: String,
+      from: String,
     },
   },
   { timestamps: true },
