@@ -24,6 +24,7 @@ import { ContactsPage } from '@/pages/contacts/ContactsPage';
 import { BackupPage } from '@/pages/admin/BackupPage';
 import { SettingsPage } from '@/pages/admin/SettingsPage';
 import { CategoriesPage } from '@/pages/admin/CategoriesPage';
+import { SecureViewPage } from '@/pages/secure/SecureViewPage';
 
 export const router = createBrowserRouter(
   [
@@ -65,6 +66,7 @@ export const router = createBrowserRouter(
         { path: 'admin/settings', element: <SettingsPage /> },
       ],
     },
+    { path: '/secure/:token', element: <SecureViewPage /> },
     { path: '*', element: <Navigate to="/" replace /> },
   ],
   { future: { v7_startTransition: true } as any },
