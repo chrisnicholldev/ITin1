@@ -14,7 +14,7 @@ function numToIp(num: number): string {
 }
 
 function parseCidr(cidr: string) {
-  const [ip, prefStr] = cidr.split('/');
+  const [ip, prefStr] = cidr.split('/') as [string, string | undefined];
   const prefix = parseInt(prefStr ?? '32');
   const mask = prefix === 0 ? 0 : (~0 << (32 - prefix)) >>> 0;
   const networkNum = (ipToNum(ip) & mask) >>> 0;
