@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Globe, X, Check, Loader2, QrCode } from 'lucide-react';
+import { Plus, Search, Globe, X, Check, Loader2, QrCode, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { getNetworks } from '@/api/networks';
 import { AssetType, AssetStatus, ExternalSource } from '@itdesk/shared';
 import { useAuthStore } from '@/stores/auth.store';
 import { UserRole } from '@itdesk/shared';
+import { ImportAssetsModal } from '@/components/assets/ImportAssetsModal';
 
 const statusVariant: Record<string, string> = {
   active: 'success', inactive: 'secondary', decommissioned: 'outline',
@@ -49,6 +50,7 @@ export function AssetsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkNetworkId, setBulkNetworkId] = useState('');
   const [bulkDone, setBulkDone] = useState(0);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['assets', { search, type, status, source, page, limit }],
@@ -103,9 +105,16 @@ export function AssetsPage() {
           <h1 className="text-2xl font-bold">Assets</h1>
           <p className="text-sm text-muted-foreground">Assets</p>
         </div>
-        <Button asChild>
-          <Link to="/assets/new"><Plus className="w-4 h-4" /> Add Asset</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <Upload className="w-4 h-4" /> Import
+            </Button>
+          )}
+          <Button asChild>
+            <Link to="/assets/new"><Plus className="w-4 h-4" /> Add Asset</Link>
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -245,6 +254,8 @@ export function AssetsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <ImportAssetsModal open={importOpen} onClose={() => setImportOpen(false)} />
 
       {/* Pagination */}
       {meta && (

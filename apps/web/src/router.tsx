@@ -25,6 +25,7 @@ import { BackupPage } from '@/pages/admin/BackupPage';
 import { SettingsPage } from '@/pages/admin/SettingsPage';
 import { CategoriesPage } from '@/pages/admin/CategoriesPage';
 import { SecureViewPage } from '@/pages/secure/SecureViewPage';
+import { SslCertsPage } from '@/pages/ssl-certs/SslCertsPage';
 
 export const router = createBrowserRouter(
   [
@@ -56,6 +57,7 @@ export const router = createBrowserRouter(
         { path: 'docs/articles/new', element: <ArticleEditorPage /> },
         { path: 'docs/articles/:slug', element: <ArticlePage /> },
         { path: 'docs/articles/:slug/edit', element: <ArticleEditorPage /> },
+        { path: 'ssl-certs', element: <SslCertsPage /> },
         { path: 'vendors', element: <VendorsPage /> },
         { path: 'contacts', element: <ContactsPage /> },
         { path: 'admin/users', element: <UsersPage /> },

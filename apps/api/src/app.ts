@@ -29,6 +29,7 @@ import docsRoutes from './modules/docs/docs.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 import secureShareRoutes from './modules/secure-share/secure-share.routes.js';
 import searchRoutes from './modules/search/search.routes.js';
+import sslCertRoutes from './modules/ssl-certs/ssl-cert.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -76,6 +77,7 @@ export function createApp(): Express {
   v1.use('/dashboard', dashboardRoutes);
   v1.use('/secure-share', secureShareRoutes);
   v1.use('/search', searchRoutes);
+  v1.use('/ssl-certs', sslCertRoutes);
 
   v1.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

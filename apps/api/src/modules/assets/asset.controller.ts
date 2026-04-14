@@ -28,3 +28,8 @@ export async function deactivateAsset(req: Request, res: Response): Promise<void
 export async function getSummary(_req: Request, res: Response): Promise<void> {
   res.json(await assetService.getSummary());
 }
+
+export async function importAssets(req: Request, res: Response): Promise<void> {
+  const result = await assetService.importAssets(req.body);
+  res.json(result);
+}

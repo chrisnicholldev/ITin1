@@ -5,6 +5,8 @@ import { runMerakiSync } from '../modules/integrations/meraki/meraki.service.js'
 import { runAdSync } from '../modules/integrations/ad/ad.service.js';
 import { getIntuneRuntimeConfig, getMerakiRuntimeConfig, getAdRuntimeConfig } from '../modules/admin/integration-config.service.js';
 import { runAssetAlerts } from '../modules/assets/asset-alerts.service.js';
+import { runSslCertAlerts } from '../modules/ssl-certs/ssl-cert-alerts.service.js';
+import { refreshAllCerts } from '../modules/ssl-certs/ssl-cert.service.js';
 
 // BullMQ requires its own connection config — passing the shared ioredis instance
 // causes version mismatch errors due to pnpm deduplication. Use URL-parsed options instead.
@@ -60,12 +62,20 @@ export async function addAssetAlerts() {
   await assetAlertsQueue.add('alerts', {}, { jobId: `manual-${Date.now()}` });
 }
 
+// ── SSL cert queue ────────────────────────────────────────────────────────────
+
+const SSL_CERT_QUEUE     = 'ssl-cert-checks';
+const SSL_CERT_JOB_KEY   = 'ssl-cert-daily';
+
+export const sslCertQueue = new Queue(SSL_CERT_QUEUE, { connection });
+
 // ── Workers ───────────────────────────────────────────────────────────────────
 
 let intuneWorker: Worker | null = null;
 let merakiWorker: Worker | null = null;
 let adWorker: Worker | null = null;
 let assetAlertsWorker: Worker | null = null;
+let sslCertWorker: Worker | null = null;
 
 export async function startWorkers() {
   const [intuneCfg, merakiCfg, adCfg] = await Promise.all([
@@ -184,6 +194,31 @@ export async function startWorkers() {
     { name: 'alerts', data: {} },
   );
   console.log('[asset-alerts] Worker started, schedule: daily at 08:00');
+
+  // ── SSL cert worker (daily at 07:00 — refresh certs then alert at 08:00) ───
+
+  sslCertWorker = new Worker(
+    SSL_CERT_QUEUE,
+    async () => {
+      console.log('[ssl-certs] Running daily refresh + alerts');
+      const refresh = await refreshAllCerts();
+      console.log(`[ssl-certs] Refreshed ${refresh.checked} certs, ${refresh.errors} errors`);
+      const alerts = await runSslCertAlerts();
+      console.log(`[ssl-certs] Alerts sent to ${alerts.sent}/${alerts.recipients} admins`);
+    },
+    { connection, concurrency: 1 },
+  );
+
+  sslCertWorker.on('failed', (job, err) => {
+    console.error(`[ssl-certs] Job ${job?.id} failed:`, err.message);
+  });
+
+  await sslCertQueue.upsertJobScheduler(
+    SSL_CERT_JOB_KEY,
+    { pattern: '0 7 * * *' },
+    { name: 'check', data: {} },
+  );
+  console.log('[ssl-certs] Worker started, schedule: daily at 07:00');
 }
 
 // ── Live schedule updates (called after config saves) ─────────────────────────
@@ -235,8 +270,10 @@ export async function stopWorkers() {
   if (merakiWorker) { await merakiWorker.close(); merakiWorker = null; }
   if (adWorker) { await adWorker.close(); adWorker = null; }
   if (assetAlertsWorker) { await assetAlertsWorker.close(); assetAlertsWorker = null; }
+  if (sslCertWorker) { await sslCertWorker.close(); sslCertWorker = null; }
   await intuneQueue.close();
   await merakiQueue.close();
   await adQueue.close();
   await assetAlertsQueue.close();
+  await sslCertQueue.close();
 }

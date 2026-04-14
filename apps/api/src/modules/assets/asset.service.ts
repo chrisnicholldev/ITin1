@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { Asset, type IAssetDocument } from './asset.model.js';
 import { AppError } from '../../middleware/error.middleware.js';
-import type { CreateAssetInput, UpdateAssetInput } from '@itdesk/shared';
+import { CreateAssetSchema, type CreateAssetInput, type UpdateAssetInput } from '@itdesk/shared';
 import { z } from 'zod';
 
 function toResponse(asset: IAssetDocument) {
@@ -162,6 +162,61 @@ export async function deactivateAsset(id: string) {
   ) as IAssetDocument | null;
   if (!asset) throw new AppError(404, 'Asset not found');
   return toResponse(asset);
+}
+
+export async function importAssets(rows: Record<string, string>[]) {
+  let imported = 0;
+  const errors: { row: number; name: string; reason: string }[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const rowNum = i + 2; // 1-indexed + header row
+    const name = row['name'] ?? '';
+
+    const parsed = CreateAssetSchema.safeParse({
+      name,
+      type: row['type']?.toLowerCase().replace(' ', '_') || 'other',
+      status: row['status']?.toLowerCase().replace(' ', '_') || 'active',
+      location: row['location'] || undefined,
+      manufacturer: row['manufacturer'] || undefined,
+      modelName: row['model'] || row['modelname'] || undefined,
+      serialNumber: row['serialnumber'] || row['serial'] || undefined,
+      purchaseDate: row['purchasedate'] || row['purchase_date'] || undefined,
+      warrantyExpiry: row['warrantyexpiry'] || row['warranty_expiry'] || row['warranty'] || undefined,
+      purchaseCost: row['purchasecost'] || row['purchase_cost'] || row['cost'] || undefined,
+      notes: row['notes'] || undefined,
+      specs: {
+        cpu: row['cpu'] || undefined,
+        ram: row['ram'] || undefined,
+        storage: row['storage'] || undefined,
+        os: row['os'] || undefined,
+        ipAddress: row['ipaddress'] || row['ip'] || undefined,
+        macAddress: row['macaddress'] || row['mac'] || undefined,
+      },
+      license: {
+        key: row['licensekey'] || row['license_key'] || undefined,
+        seats: row['licenseseats'] || row['license_seats'] || undefined,
+        vendor: row['licensevendor'] || row['license_vendor'] || undefined,
+        expiryDate: row['licenseexpiry'] || row['license_expiry'] || undefined,
+      },
+      customFields: {},
+    });
+
+    if (!parsed.success) {
+      const reason = Object.values(parsed.error.flatten().fieldErrors).flat().join(', ');
+      errors.push({ row: rowNum, name: name || `Row ${rowNum}`, reason });
+      continue;
+    }
+
+    try {
+      await createAsset(parsed.data);
+      imported++;
+    } catch (err: any) {
+      errors.push({ row: rowNum, name: name || `Row ${rowNum}`, reason: err.message ?? 'Unknown error' });
+    }
+  }
+
+  return { imported, skipped: rows.length - imported - errors.length, errors };
 }
 
 export async function getSummary() {

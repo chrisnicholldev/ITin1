@@ -25,3 +25,8 @@ export async function getAssetSummary() {
   const { data } = await apiClient.get('/assets/report/summary');
   return data;
 }
+
+export async function importAssets(rows: Record<string, string>[]) {
+  const { data } = await apiClient.post('/assets/import', rows);
+  return data as { imported: number; skipped: number; errors: { row: number; name: string; reason: string }[] };
+}
