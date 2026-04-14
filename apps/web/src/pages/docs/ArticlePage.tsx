@@ -1,9 +1,12 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Pencil, Calendar, User, FolderOpen, Tag } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { ArrowLeft, Pencil, Calendar, User, FolderOpen, Tag, Share2 } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { getArticle } from '@/api/docs';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { getArticle, shareArticle } from '@/api/docs';
 import { TipTapRenderer } from '@/components/docs/TipTapEditor';
 import { useAuthStore } from '@/stores/auth.store';
 import { UserRole, type ArticleResponse } from '@itdesk/shared';
@@ -18,6 +21,18 @@ export function ArticlePage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === UserRole.IT_ADMIN || user?.role === UserRole.SUPER_ADMIN;
+
+  const [showShare, setShowShare] = useState(false);
+  const [shareTo, setShareTo] = useState('');
+  const [shareNote, setShareNote] = useState('');
+  const [shareResult, setShareResult] = useState<'idle' | 'ok' | 'error'>('idle');
+  const [shareError, setShareError] = useState('');
+
+  const { mutate: doShare, isPending: sharing } = useMutation({
+    mutationFn: () => shareArticle(slug!, { to: shareTo, note: shareNote }),
+    onSuccess: () => { setShareResult('ok'); setShareError(''); },
+    onError: (err: any) => { setShareResult('error'); setShareError(err?.response?.data?.error ?? 'Failed to send'); },
+  });
 
   const { data: article, isLoading, isError } = useQuery<ArticleResponse>({
     queryKey: ['docs', 'articles', slug],
@@ -51,12 +66,48 @@ export function ArticlePage() {
             <Badge variant="outline">Draft</Badge>
           )}
         </div>
-        {isAdmin && (
-          <Button variant="outline" size="sm" onClick={() => navigate(`/docs/articles/${slug}/edit`)}>
-            <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => { setShowShare(!showShare); setShareResult('idle'); }}>
+            <Share2 className="h-3.5 w-3.5 mr-1.5" /> Share
           </Button>
-        )}
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={() => navigate(`/docs/articles/${slug}/edit`)}>
+              <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Share panel */}
+      {showShare && (
+        <div className="border rounded-md p-4 bg-muted/20 space-y-3">
+          <p className="text-sm font-medium">Share this article via email</p>
+          <div className="space-y-1.5">
+            <Input
+              type="email"
+              placeholder="Recipient email address"
+              value={shareTo}
+              onChange={(e) => { setShareTo(e.target.value); setShareResult('idle'); }}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Textarea
+              placeholder="Add a personal note (optional)"
+              value={shareNote}
+              onChange={(e) => setShareNote(e.target.value)}
+              rows={2}
+              className="resize-none"
+            />
+          </div>
+          {shareResult === 'ok' && <p className="text-xs text-green-700">Article shared successfully.</p>}
+          {shareResult === 'error' && <p className="text-xs text-destructive">{shareError}</p>}
+          <div className="flex justify-end">
+            <Button size="sm" disabled={sharing || !shareTo} onClick={() => doShare()}>
+              {sharing ? 'Sending…' : 'Send'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Meta row */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground border-b pb-4">
