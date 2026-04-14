@@ -92,7 +92,7 @@ function IpModal({
           </div>
           <div className="space-y-1.5">
             <Label>Type</Label>
-            <Select value={type} onValueChange={setType}>
+            <Select value={type} onValueChange={(v) => setType(v as 'static' | 'reserved' | 'dhcp')}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="static">Static</SelectItem>

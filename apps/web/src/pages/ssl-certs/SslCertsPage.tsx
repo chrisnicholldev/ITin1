@@ -27,7 +27,7 @@ function daysUntil(expiresAt: string | undefined): number | null {
   return Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
-function DaysLabel({ expiresAt, status }: { expiresAt?: string; status: SslCert['status'] }) {
+function DaysLabel({ expiresAt }: { expiresAt?: string; status: SslCert['status'] }) {
   const days = daysUntil(expiresAt);
   if (days === null) return <span className="text-muted-foreground text-xs">—</span>;
   if (days <= 0)  return <span className="text-xs font-semibold text-red-600">Expired</span>;
@@ -225,7 +225,6 @@ export function SslCertsPage() {
             {certs.map((cert) => {
               const cfg = STATUS_CONFIG[cert.status];
               const StatusIcon = cfg.icon;
-              const days = daysUntil(cert.expiresAt);
               const isChecking = checkingId === cert.id;
 
               return (
