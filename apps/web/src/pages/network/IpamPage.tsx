@@ -470,6 +470,7 @@ export function IpamPage() {
       </Card>
 
       <IpModal
+        key={editing?.id ?? prefillIp ?? 'new'}
         open={modalOpen}
         onClose={() => { setModalOpen(false); setEditing(undefined); setPrefillIp(''); }}
         networkId={networkId!}
