@@ -3,6 +3,7 @@ import { requireAuth } from '../../middleware/auth.middleware.js';
 import type { AuthenticatedRequest } from '../../middleware/auth.middleware.js';
 import { AppError } from '../../middleware/error.middleware.js';
 import { createShare, viewShare } from './secure-share.service.js';
+import { User } from '../users/user.model.js';
 
 const router: IRouter = Router();
 
@@ -15,6 +16,9 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
   if (!recipientEmail) throw new AppError(400, 'Recipient email required');
   if (contentType !== 'credential' && contentType !== 'note') throw new AppError(400, 'Invalid content type');
 
+  const userDoc = await User.findById(user.id).select('displayName');
+  const createdByName = userDoc?.displayName ?? 'IT Staff';
+
   const result = await createShare({
     contentType,
     credentialId: credentialId || undefined,
@@ -23,7 +27,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     expiresInHours: Number(expiresInHours) || 24,
     viewLimit: Number(viewLimit) || 1,
     createdBy: user.id,
-    createdByName: user.displayName,
+    createdByName,
   });
 
   res.json(result);

@@ -5,6 +5,7 @@ import { AppError } from '../../middleware/error.middleware.js';
 import type { AuthenticatedRequest } from '../../middleware/auth.middleware.js';
 import { sendMail } from '../../lib/mailer.js';
 import { env } from '../../config/env.js';
+import { User } from '../users/user.model.js';
 
 function userId(req: Request) { return (req as AuthenticatedRequest).user.id; }
 
@@ -76,9 +77,11 @@ export async function shareArticle(req: Request, res: Response) {
   const article = await service.getArticle(String(req.params['slug']));
   if (!article) throw new AppError(404, 'Article not found');
 
-  const sender = (req as AuthenticatedRequest).user;
+  const senderUser = await User.findById((req as AuthenticatedRequest).user.id).select('displayName');
+  const senderName = senderUser?.displayName ?? 'IT Staff';
   const articleUrl = `${env.CLIENT_URL}/docs/articles/${article.slug}`;
-  const excerpt = article.bodyText ? article.bodyText.slice(0, 300).trim() + (article.bodyText.length > 300 ? '…' : '') : '';
+  const plainText = article.body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const excerpt = plainText.length > 300 ? plainText.slice(0, 300).trim() + '…' : plainText;
 
   const noteBlock = note?.trim()
     ? `<div style="background:#f4f4f5;border-left:3px solid #18181b;padding:12px 16px;margin-bottom:20px;border-radius:0 4px 4px 0;font-size:14px;color:#3f3f46">${note.trim()}</div>`
@@ -93,7 +96,7 @@ export async function shareArticle(req: Request, res: Response) {
     </div>
     <div style="padding:28px">
       <h2 style="margin:0 0 8px;font-size:18px;color:#18181b">${article.title}</h2>
-      <p style="margin:0 0 20px;font-size:13px;color:#71717a">${sender.displayName} shared a knowledge base article with you.</p>
+      <p style="margin:0 0 20px;font-size:13px;color:#71717a">${senderName} shared a knowledge base article with you.</p>
       ${noteBlock}
       ${excerpt ? `<p style="font-size:14px;color:#3f3f46;margin:0 0 20px">${excerpt}</p>` : ''}
       <a href="${articleUrl}" style="display:inline-block;padding:10px 20px;background:#18181b;color:#fff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:500">View Article</a>
