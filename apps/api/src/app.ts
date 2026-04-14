@@ -27,6 +27,7 @@ import adminRoutes from './modules/admin/backup.routes.js';
 import locationRoutes from './modules/locations/location.routes.js';
 import docsRoutes from './modules/docs/docs.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
+import secureShareRoutes from './modules/secure-share/secure-share.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -72,6 +73,7 @@ export function createApp(): Express {
   v1.use('/locations', locationRoutes);
   v1.use('/docs', docsRoutes);
   v1.use('/dashboard', dashboardRoutes);
+  v1.use('/secure-share', secureShareRoutes);
 
   v1.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Shield, ChevronDown, ChevronUp, ClipboardList, Upload, Lock } from 'lucide-react';
+import { Plus, Pencil, Trash2, Shield, ChevronDown, ChevronUp, ClipboardList, Upload, Lock, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { UserRole } from '@itdesk/shared';
 import { PasswordCell } from '@/components/vault/PasswordCell';
 import { CredentialModal } from '@/components/vault/CredentialModal';
 import { ImportCredentialsModal } from '@/components/vault/ImportCredentialsModal';
+import { SecureShareModal } from '@/components/vault/SecureShareModal';
 
 const CATEGORY_LABELS: Record<string, string> = {
   service_account: 'Service Account',
@@ -87,6 +88,9 @@ export function VaultPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<CredentialResponse | undefined>();
   const [showAudit, setShowAudit] = useState(false);
+  const [shareTarget, setShareTarget] = useState<
+    { contentType: 'credential'; id: string; title: string } | { contentType: 'note' } | null
+  >(null);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -156,6 +160,9 @@ export function VaultPage() {
               {showAudit ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={() => setShareTarget({ contentType: 'note' })} className="gap-1.5">
+            <Share2 className="h-4 w-4" /> Secure Note
+          </Button>
           {isAdmin && (
             <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} className="gap-1.5">
               <Upload className="h-4 w-4" /> Import
@@ -284,11 +291,22 @@ export function VaultPage() {
                             ) : <span className="text-muted-foreground">—</span>}
                           </td>
                           <td className="px-4 py-2.5">
-                            {isAdmin && (
-                              <div className="flex gap-1 justify-end">
+                            <div className="flex gap-1 justify-end">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                                title="Send as secure link"
+                                onClick={() => setShareTarget({ contentType: 'credential', id: c.id, title: c.title })}
+                              >
+                                <Share2 className="h-3.5 w-3.5" />
+                              </Button>
+                              {isAdmin && (
                                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEdit(c)}>
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
+                              )}
+                              {isAdmin && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -297,8 +315,8 @@ export function VaultPage() {
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -317,6 +335,9 @@ export function VaultPage() {
         editing={editing}
       />
       <ImportCredentialsModal open={importOpen} onClose={() => setImportOpen(false)} />
+      {shareTarget && (
+        <SecureShareModal target={shareTarget} onClose={() => setShareTarget(null)} />
+      )}
     </div>
   );
 }
