@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Globe, X, Check, Loader2 } from 'lucide-react';
+import { Plus, Search, Globe, X, Check, Loader2, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getAssets, updateAsset } from '@/api/assets';
+import { printLabels } from '@/lib/printLabels';
 import { getNetworks } from '@/api/networks';
 import { AssetType, AssetStatus, ExternalSource } from '@itdesk/shared';
 import { useAuthStore } from '@/stores/auth.store';
@@ -169,6 +170,15 @@ export function AssetsPage() {
                 : <><Check className="h-3.5 w-3.5" />Apply</>}
             </Button>
           </div>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5"
+            onClick={() => {
+              const selectedAssets = (assets as any[])
+                .filter((a: any) => selected.has(a.id))
+                .map((a: any) => ({ id: a.id, name: a.name, assetTag: a.assetTag, type: a.type }));
+              printLabels(selectedAssets);
+            }}>
+            <QrCode className="h-3.5 w-3.5" /> Print Labels
+          </Button>
           <Button size="sm" variant="ghost" className="h-8 gap-1 ml-auto"
             onClick={() => { setSelected(new Set()); setBulkNetworkId(''); }}>
             <X className="h-3.5 w-3.5" /> Clear

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Pencil, X, Check, Loader2, ExternalLink, Plus, Trash2, KeyRound, Server, User, Globe, Building2, Phone, Mail } from 'lucide-react';
+import { ArrowLeft, Pencil, X, Check, Loader2, ExternalLink, Plus, Trash2, KeyRound, Server, User, Globe, Building2, Phone, Mail, QrCode } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import { getVendors } from '@/api/vendors';
 import { UpdateAssetSchema, AssetType, AssetStatus, type UpdateAssetInput, type CredentialResponse } from '@itdesk/shared';
 import { PasswordCell } from '@/components/vault/PasswordCell';
 import { CredentialModal } from '@/components/vault/CredentialModal';
+import { printLabels } from '@/lib/printLabels';
 import { useAuthStore } from '@/stores/auth.store';
 import { UserRole } from '@itdesk/shared';
 
@@ -158,6 +159,11 @@ export function AssetDetailPage() {
           <Badge variant={(statusVariant[asset.status] as 'default') ?? 'secondary'}>
             {asset.status.replace(/_/g, ' ')}
           </Badge>
+          <Button size="sm" variant="outline"
+            onClick={() => printLabels([{ id: asset.id, name: asset.name, assetTag: asset.assetTag, type: asset.type }])}
+            className="gap-1.5">
+            <QrCode className="w-3.5 h-3.5" /> Print Label
+          </Button>
           {!editing ? (
             <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="gap-1.5">
               <Pencil className="w-3.5 h-3.5" /> Edit
