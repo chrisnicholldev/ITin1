@@ -32,4 +32,9 @@ router.delete('/:networkId/:id', requireAdmin, async (req: Request, res: Respons
   res.status(204).send();
 });
 
+// POST /ipam/:networkId/scan — probe subnet for live hosts
+router.post('/:networkId/scan', requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  res.json(await service.scanSubnet(String(req.params['networkId'])));
+});
+
 export default router;

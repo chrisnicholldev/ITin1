@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, ScanLine, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { getIpam, assignIp, updateIpAssignment, releaseIp, type IpAssignment, type GridEntry } from '@/api/ipam';
+import { getIpam, assignIp, updateIpAssignment, releaseIp, scanSubnet, type IpAssignment, type GridEntry, type ScanResult } from '@/api/ipam';
 import { getAssets } from '@/api/assets';
 import { useAuthStore } from '@/stores/auth.store';
 import { UserRole } from '@itdesk/shared';
@@ -190,6 +190,87 @@ function SubnetGrid({ grid, onClickFree }: { grid: GridEntry[]; onClickFree: (ip
   );
 }
 
+// ── Scan results panel ────────────────────────────────────────────────────────
+
+function ScanPanel({
+  results, scanned, found, onAssign, onClose,
+}: {
+  results: ScanResult[]; scanned: number; found: number;
+  onAssign: (selected: ScanResult[]) => void; onClose: () => void;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(
+    new Set(results.filter((r) => !r.alreadyAssigned).map((r) => r.ip)),
+  );
+
+  function toggle(ip: string) {
+    setSelected((prev) => { const n = new Set(prev); n.has(ip) ? n.delete(ip) : n.add(ip); return n; });
+  }
+
+  const toAssign = results.filter((r) => selected.has(r.ip) && !r.alreadyAssigned);
+
+  return (
+    <Card className="border-primary/30">
+      <CardHeader className="pb-2 pt-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium">
+            Scan complete — {found} host{found !== 1 ? 's' : ''} found of {scanned} scanned
+          </CardTitle>
+          <Button variant="ghost" size="sm" onClick={onClose} className="h-7 text-xs">Dismiss</Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Discovered via TCP probe. Devices with no open ports may not appear.
+          Uncheck any you don't want to assign.
+        </p>
+      </CardHeader>
+      <CardContent className="p-0">
+        {results.length === 0 ? (
+          <p className="px-4 pb-4 text-sm text-muted-foreground">No responding hosts found.</p>
+        ) : (
+          <>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/40">
+                  <th className="w-8 px-3 py-2" />
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs w-36">IP</th>
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs">Hostname</th>
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs w-32">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((r) => (
+                  <tr key={r.ip} className="border-b last:border-0">
+                    <td className="px-3 py-2 text-center">
+                      {r.alreadyAssigned
+                        ? <Check className="h-3.5 w-3.5 text-muted-foreground mx-auto" />
+                        : <input type="checkbox" checked={selected.has(r.ip)} onChange={() => toggle(r.ip)} className="cursor-pointer" />
+                      }
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs">{r.ip}</td>
+                    <td className="px-3 py-2 text-xs">{r.hostname ?? <span className="text-muted-foreground">—</span>}</td>
+                    <td className="px-3 py-2 text-xs">
+                      {r.alreadyAssigned
+                        ? <span className="text-muted-foreground">Already assigned ({r.existingLabel})</span>
+                        : <span className="text-green-600 font-medium">New</span>
+                      }
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {toAssign.length > 0 && (
+              <div className="px-4 py-3 border-t">
+                <Button size="sm" onClick={() => onAssign(toAssign)}>
+                  <Plus className="h-3.5 w-3.5" /> Assign {toAssign.length} selected
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function IpamPage() {
@@ -201,6 +282,7 @@ export function IpamPage() {
   const [modalOpen,  setModalOpen]  = useState(false);
   const [prefillIp,  setPrefillIp]  = useState('');
   const [editing,    setEditing]    = useState<IpAssignment | undefined>();
+  const [scanResults, setScanResults] = useState<{ results: ScanResult[]; scanned: number; found: number } | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['ipam', networkId],
@@ -211,6 +293,22 @@ export function IpamPage() {
   const { mutate: doRelease } = useMutation({
     mutationFn: (id: string) => releaseIp(networkId!, id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ipam', networkId] }),
+  });
+
+  const { mutate: doScan, isPending: isScanning } = useMutation({
+    mutationFn: () => scanSubnet(networkId!),
+    onSuccess: (res) => setScanResults(res),
+  });
+
+  const { mutate: bulkAssign, isPending: isBulkAssigning } = useMutation({
+    mutationFn: (selected: ScanResult[]) =>
+      Promise.all(selected.map((r) =>
+        assignIp(networkId!, { address: r.ip, label: r.hostname ?? r.ip, type: 'static' }),
+      )),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ipam', networkId] });
+      setScanResults(null);
+    },
   });
 
   function openAssign(ip = '') {
@@ -245,9 +343,17 @@ export function IpamPage() {
           </p>
         </div>
         {isAdmin && (
-          <Button onClick={() => openAssign()}>
-            <Plus className="w-4 h-4" /> Assign IP
-          </Button>
+          <div className="flex items-center gap-2">
+            {data?.canVisualise && (
+              <Button variant="outline" onClick={() => doScan()} disabled={isScanning}>
+                <ScanLine className="w-4 h-4" />
+                {isScanning ? 'Scanning...' : 'Scan Subnet'}
+              </Button>
+            )}
+            <Button onClick={() => openAssign()}>
+              <Plus className="w-4 h-4" /> Assign IP
+            </Button>
+          </div>
         )}
       </div>
 
@@ -292,6 +398,17 @@ export function IpamPage() {
         <div className="rounded-md border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
           Subnet is too large (/{subnet.prefix}) for visual display — showing table only.
         </div>
+      )}
+
+      {/* Scan results */}
+      {scanResults && (
+        <ScanPanel
+          results={scanResults.results}
+          scanned={scanResults.scanned}
+          found={scanResults.found}
+          onAssign={(selected) => bulkAssign(selected)}
+          onClose={() => setScanResults(null)}
+        />
       )}
 
       {/* Assignment table */}

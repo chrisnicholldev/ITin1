@@ -68,3 +68,22 @@ export async function updateIpAssignment(
 export async function releaseIp(networkId: string, id: string): Promise<void> {
   await apiClient.delete(`/ipam/${networkId}/${id}`);
 }
+
+export interface ScanResult {
+  ip: string;
+  alive: boolean;
+  hostname?: string;
+  alreadyAssigned: boolean;
+  existingLabel?: string;
+}
+
+export interface ScanResponse {
+  results: ScanResult[];
+  scanned: number;
+  found: number;
+}
+
+export async function scanSubnet(networkId: string): Promise<ScanResponse> {
+  const { data } = await apiClient.post(`/ipam/${networkId}/scan`);
+  return data;
+}
