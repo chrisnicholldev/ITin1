@@ -15,6 +15,7 @@ router.delete('/folders/:id', requireAdmin, c.deleteFolder);
 router.get('/articles', c.listArticles);
 router.post('/articles', requireAdmin, c.createArticle);
 router.get('/articles/:slug', c.getArticle);
+router.post('/articles/:slug/share', c.shareArticle);
 router.patch('/articles/:slug', requireAdmin, c.updateArticle);
 router.delete('/articles/:slug', requireAdmin, c.deleteArticle);
 

@@ -43,3 +43,7 @@ export async function updateArticle(slug: string, input: UpdateArticleInput) {
 export async function deleteArticle(slug: string) {
   await apiClient.delete(`/docs/articles/${slug}`);
 }
+
+export async function shareArticle(slug: string, payload: { to: string; note?: string }) {
+  await apiClient.post(`/docs/articles/${slug}/share`, payload);
+}
