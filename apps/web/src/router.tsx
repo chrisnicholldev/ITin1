@@ -26,6 +26,7 @@ import { SettingsPage } from '@/pages/admin/SettingsPage';
 import { CategoriesPage } from '@/pages/admin/CategoriesPage';
 import { SecureViewPage } from '@/pages/secure/SecureViewPage';
 import { SslCertsPage } from '@/pages/ssl-certs/SslCertsPage';
+import { IpamPage } from '@/pages/network/IpamPage';
 
 export const router = createBrowserRouter(
   [
@@ -53,6 +54,7 @@ export const router = createBrowserRouter(
         { path: 'network/racks', element: <RacksPage /> },
         { path: 'network/racks/:id', element: <RackDetailPage /> },
         { path: 'network/networks', element: <NetworksPage /> },
+        { path: 'network/ipam/:networkId', element: <IpamPage /> },
         { path: 'docs', element: <DocsPage /> },
         { path: 'docs/articles/new', element: <ArticleEditorPage /> },
         { path: 'docs/articles/:slug', element: <ArticlePage /> },

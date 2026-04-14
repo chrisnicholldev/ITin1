@@ -169,7 +169,7 @@ export async function importAssets(rows: Record<string, string>[]) {
   const errors: { row: number; name: string; reason: string }[] = [];
 
   for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
+    const row = rows[i]!;
     const rowNum = i + 2; // 1-indexed + header row
     const name = row['name'] ?? '';
 

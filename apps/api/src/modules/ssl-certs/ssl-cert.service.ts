@@ -30,7 +30,7 @@ function fetchCertInfo(domain: string, port: number): Promise<CertInfo> {
               .map((s) => s.replace('DNS:', '').trim())
           : [];
         resolve({
-          commonName: cert.subject.CN ?? domain,
+          commonName: (Array.isArray(cert.subject.CN) ? cert.subject.CN[0] : cert.subject.CN) ?? domain,
           issuer: (cert.issuer as any).O ?? (cert.issuer as any).CN ?? '',
           issuedAt:  new Date(cert.valid_from),
           expiresAt: new Date(cert.valid_to),

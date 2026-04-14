@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Globe, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Pencil, Trash2, Globe, Search, ChevronDown, ChevronUp, Network } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -185,6 +185,13 @@ function NetworkCard({ network, isAdmin, onEdit, onDelete }: {
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <div onClick={(e) => e.stopPropagation()}>
+              <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" asChild>
+                <Link to={`/network/ipam/${network.id}`}>
+                  <Network className="h-3 w-3" /> Manage IPs
+                </Link>
+              </Button>
+            </div>
             {isAdmin && (
               <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onEdit}>
