@@ -4,6 +4,7 @@ import { runIntuneSync } from '../modules/integrations/intune/intune.service.js'
 import { runMerakiSync } from '../modules/integrations/meraki/meraki.service.js';
 import { runAdSync } from '../modules/integrations/ad/ad.service.js';
 import { getIntuneRuntimeConfig, getMerakiRuntimeConfig, getAdRuntimeConfig } from '../modules/admin/integration-config.service.js';
+import { runAssetAlerts } from '../modules/assets/asset-alerts.service.js';
 
 // BullMQ requires its own connection config — passing the shared ioredis instance
 // causes version mismatch errors due to pnpm deduplication. Use URL-parsed options instead.
@@ -48,11 +49,23 @@ export async function addAdSync(triggeredBy: 'manual' | 'schedule' = 'manual') {
   await adQueue.add('sync', { triggeredBy }, { jobId: triggeredBy === 'manual' ? `manual-${Date.now()}` : undefined });
 }
 
+// ── Asset alerts queue ────────────────────────────────────────────────────────
+
+const ASSET_ALERTS_QUEUE = 'asset-alerts';
+const ASSET_ALERTS_JOB_KEY = 'asset-alerts-daily';
+
+export const assetAlertsQueue = new Queue(ASSET_ALERTS_QUEUE, { connection });
+
+export async function addAssetAlerts() {
+  await assetAlertsQueue.add('alerts', {}, { jobId: `manual-${Date.now()}` });
+}
+
 // ── Workers ───────────────────────────────────────────────────────────────────
 
 let intuneWorker: Worker | null = null;
 let merakiWorker: Worker | null = null;
 let adWorker: Worker | null = null;
+let assetAlertsWorker: Worker | null = null;
 
 export async function startWorkers() {
   const [intuneCfg, merakiCfg, adCfg] = await Promise.all([
@@ -148,6 +161,29 @@ export async function startWorkers() {
     await adQueue.removeJobScheduler(AD_REPEAT_JOB_KEY);
     console.log('[ad-sync] Worker started, no schedule (manual only)');
   }
+
+  // ── Asset alerts worker (daily at 08:00) ───────────────────────────────────
+
+  assetAlertsWorker = new Worker(
+    ASSET_ALERTS_QUEUE,
+    async () => {
+      console.log('[asset-alerts] Running expiry digest');
+      const result = await runAssetAlerts();
+      console.log(`[asset-alerts] Done — sent to ${result.sent}/${result.recipients} admins`);
+    },
+    { connection, concurrency: 1 },
+  );
+
+  assetAlertsWorker.on('failed', (job, err) => {
+    console.error(`[asset-alerts] Job ${job?.id} failed:`, err.message);
+  });
+
+  await assetAlertsQueue.upsertJobScheduler(
+    ASSET_ALERTS_JOB_KEY,
+    { pattern: '0 8 * * *' },
+    { name: 'alerts', data: {} },
+  );
+  console.log('[asset-alerts] Worker started, schedule: daily at 08:00');
 }
 
 // ── Live schedule updates (called after config saves) ─────────────────────────
@@ -198,7 +234,9 @@ export async function stopWorkers() {
   if (intuneWorker) { await intuneWorker.close(); intuneWorker = null; }
   if (merakiWorker) { await merakiWorker.close(); merakiWorker = null; }
   if (adWorker) { await adWorker.close(); adWorker = null; }
+  if (assetAlertsWorker) { await assetAlertsWorker.close(); assetAlertsWorker = null; }
   await intuneQueue.close();
   await merakiQueue.close();
   await adQueue.close();
+  await assetAlertsQueue.close();
 }
