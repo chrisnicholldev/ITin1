@@ -25,6 +25,7 @@ import {
   ContactRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { GlobalSearch } from '@/components/GlobalSearch';
 import { useState, useEffect } from 'react';
 
 const navItems = [
@@ -88,6 +89,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             : <Ticket className="w-4 h-4 text-primary-foreground" />}
         </div>
         <span className="font-semibold text-lg">{orgName}</span>
+      </div>
+
+      <div className="px-2 py-2 border-b">
+        <GlobalSearch />
       </div>
 
       <div className="flex-1 py-4 space-y-1 px-2">
