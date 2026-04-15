@@ -28,6 +28,7 @@ export const CreateArticleSchema = z.object({
   linkedLocationId: z.string().optional(),
   tags: z.array(z.string().max(50)).default([]),
   published: z.boolean().default(false),
+  sourceUrl: z.string().url().optional().or(z.literal('')),
 });
 
 export const UpdateArticleSchema = CreateArticleSchema.partial();
@@ -42,6 +43,7 @@ export const ArticleResponseSchema = z.object({
   linkedLocation: z.object({ id: z.string(), name: z.string() }).optional(),
   tags: z.array(z.string()),
   published: z.boolean(),
+  sourceUrl: z.string().optional(),
   publishedAt: z.string().datetime().optional(),
   createdBy: z.object({ id: z.string(), displayName: z.string() }),
   updatedBy: z.object({ id: z.string(), displayName: z.string() }).optional(),

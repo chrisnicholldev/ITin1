@@ -27,6 +27,7 @@ import { CategoriesPage } from '@/pages/admin/CategoriesPage';
 import { SecureViewPage } from '@/pages/secure/SecureViewPage';
 import { SslCertsPage } from '@/pages/ssl-certs/SslCertsPage';
 import { IpamPage } from '@/pages/network/IpamPage';
+import { LicensesPage } from '@/pages/licenses/LicensesPage';
 
 export const router = createBrowserRouter(
   [
@@ -60,6 +61,7 @@ export const router = createBrowserRouter(
         { path: 'docs/articles/:slug', element: <ArticlePage /> },
         { path: 'docs/articles/:slug/edit', element: <ArticleEditorPage /> },
         { path: 'ssl-certs', element: <SslCertsPage /> },
+        { path: 'licenses', element: <LicensesPage /> },
         { path: 'vendors', element: <VendorsPage /> },
         { path: 'contacts', element: <ContactsPage /> },
         { path: 'admin/users', element: <UsersPage /> },

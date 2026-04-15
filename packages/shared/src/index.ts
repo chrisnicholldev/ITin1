@@ -14,3 +14,4 @@ export * from './schemas/location.schema.js';
 export * from './schemas/doc.schema.js';
 export * from './schemas/network.schema.js';
 export * from './schemas/vendor.schema.js';
+export * from './schemas/license.schema.js';

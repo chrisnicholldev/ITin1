@@ -24,6 +24,7 @@ import {
   Tag,
   ContactRound,
   Lock,
+  KeyRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GlobalSearch } from '@/components/GlobalSearch';
@@ -38,6 +39,7 @@ const navItems = [
   { href: '/network/racks', label: 'Racks', icon: Server, minRole: 'it_technician' },
   { href: '/network/networks', label: 'Networks', icon: Globe, minRole: 'it_technician' },
   { href: '/ssl-certs', label: 'SSL Certs', icon: Lock, minRole: 'it_technician' },
+  { href: '/licenses', label: 'Licenses', icon: KeyRound, minRole: 'it_technician' },
   { href: '/vendors', label: 'Vendors', icon: Building2, minRole: 'it_technician' },
   { href: '/contacts', label: 'Contacts', icon: ContactRound, minRole: 'it_technician' },
   { href: '/admin/locations', label: 'Locations', icon: MapPin, minRole: 'it_admin' },

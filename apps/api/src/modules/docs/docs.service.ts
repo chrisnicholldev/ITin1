@@ -74,6 +74,7 @@ function articleToResponse(doc: IArticleDocument) {
       ? { id: obj.linkedLocation._id?.toString() ?? obj.linkedLocation.id, name: obj.linkedLocation.name }
       : undefined,
     tags: doc.tags,
+    sourceUrl: doc.sourceUrl,
     published: !!doc.publishedAt,
     publishedAt: doc.publishedAt?.toISOString(),
     createdBy: obj.createdBy

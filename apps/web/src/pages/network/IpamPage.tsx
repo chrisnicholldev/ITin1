@@ -300,7 +300,7 @@ export function IpamPage() {
     onSuccess: (res) => setScanResults(res),
   });
 
-  const { mutate: bulkAssign, isPending: isBulkAssigning } = useMutation({
+  const { mutate: bulkAssign } = useMutation({
     mutationFn: (selected: ScanResult[]) =>
       Promise.all(selected.map((r) =>
         assignIp(networkId!, { address: r.ip, label: r.hostname ?? r.ip, type: 'static' }),
