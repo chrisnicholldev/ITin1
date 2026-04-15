@@ -25,6 +25,9 @@ import {
   ContactRound,
   Lock,
   KeyRound,
+  FileText,
+  CalendarClock,
+  ClipboardList,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GlobalSearch } from '@/components/GlobalSearch';
@@ -40,6 +43,9 @@ const navItems = [
   { href: '/network/networks', label: 'Networks', icon: Globe, minRole: 'it_technician' },
   { href: '/ssl-certs', label: 'SSL Certs', icon: Lock, minRole: 'it_technician' },
   { href: '/licenses', label: 'Licenses', icon: KeyRound, minRole: 'it_technician' },
+  { href: '/contracts', label: 'Contracts', icon: FileText, minRole: 'it_technician' },
+  { href: '/renewals', label: 'Renewals', icon: CalendarClock, minRole: 'it_technician' },
+  { href: '/changelog', label: 'Change Log', icon: ClipboardList, minRole: 'it_technician' },
   { href: '/vendors', label: 'Vendors', icon: Building2, minRole: 'it_technician' },
   { href: '/contacts', label: 'Contacts', icon: ContactRound, minRole: 'it_technician' },
   { href: '/admin/locations', label: 'Locations', icon: MapPin, minRole: 'it_admin' },

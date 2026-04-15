@@ -28,6 +28,9 @@ import { SecureViewPage } from '@/pages/secure/SecureViewPage';
 import { SslCertsPage } from '@/pages/ssl-certs/SslCertsPage';
 import { IpamPage } from '@/pages/network/IpamPage';
 import { LicensesPage } from '@/pages/licenses/LicensesPage';
+import { ContractsPage } from '@/pages/contracts/ContractsPage';
+import { RenewalsPage } from '@/pages/renewals/RenewalsPage';
+import { ChangelogPage } from '@/pages/changelog/ChangelogPage';
 
 export const router = createBrowserRouter(
   [
@@ -62,6 +65,9 @@ export const router = createBrowserRouter(
         { path: 'docs/articles/:slug/edit', element: <ArticleEditorPage /> },
         { path: 'ssl-certs', element: <SslCertsPage /> },
         { path: 'licenses', element: <LicensesPage /> },
+        { path: 'contracts', element: <ContractsPage /> },
+        { path: 'renewals', element: <RenewalsPage /> },
+        { path: 'changelog', element: <ChangelogPage /> },
         { path: 'vendors', element: <VendorsPage /> },
         { path: 'contacts', element: <ContactsPage /> },
         { path: 'admin/users', element: <UsersPage /> },

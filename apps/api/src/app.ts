@@ -32,6 +32,8 @@ import searchRoutes from './modules/search/search.routes.js';
 import sslCertRoutes from './modules/ssl-certs/ssl-cert.routes.js';
 import ipamRoutes from './modules/network/ip-address.routes.js';
 import licenseRoutes from './modules/licenses/license.routes.js';
+import contractRoutes from './modules/contracts/contract.routes.js';
+import changelogRoutes from './modules/changelog/changelog.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -82,6 +84,8 @@ export function createApp(): Express {
   v1.use('/ssl-certs', sslCertRoutes);
   v1.use('/ipam', ipamRoutes);
   v1.use('/licenses', licenseRoutes);
+  v1.use('/contracts', contractRoutes);
+  v1.use('/changelog', changelogRoutes);
 
   v1.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
