@@ -1,6 +1,36 @@
 import mongoose, { type Document, type Model } from 'mongoose';
 import { CredentialCategory, VaultAccessLevel, VaultAuditAction } from '@itdesk/shared';
 
+// ── Vault Folder ──────────────────────────────────────────────────────────────
+
+export interface IVaultFolder {
+  name: string;
+  icon?: string;
+  colour?: string;
+  sortOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IVaultFolderDocument extends IVaultFolder, Document {}
+
+const vaultFolderSchema = new mongoose.Schema<IVaultFolderDocument>(
+  {
+    name:      { type: String, required: true, trim: true },
+    icon:      { type: String },
+    colour:    { type: String },
+    sortOrder: { type: Number, default: 0 },
+  },
+  { timestamps: true },
+);
+
+vaultFolderSchema.index({ sortOrder: 1, name: 1 });
+
+export const VaultFolder: Model<IVaultFolderDocument> = mongoose.model<IVaultFolderDocument>(
+  'VaultFolder',
+  vaultFolderSchema,
+);
+
 // ── Credential ────────────────────────────────────────────────────────────────
 
 export interface ICredential {
@@ -13,6 +43,7 @@ export interface ICredential {
   url?: string;
   notes?: string;
   category: string;
+  folder?: mongoose.Types.ObjectId;
   linkedAsset?: mongoose.Types.ObjectId;
   linkedVendor?: mongoose.Types.ObjectId;
   linkedContact?: mongoose.Types.ObjectId;
@@ -42,6 +73,7 @@ const credentialSchema = new mongoose.Schema<ICredentialDocument>(
       enum: Object.values(CredentialCategory),
       default: CredentialCategory.OTHER,
     },
+    folder:      { type: mongoose.Schema.Types.ObjectId, ref: 'VaultFolder' },
     linkedAsset: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset' },
     linkedVendor: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor' },
     linkedContact: { type: mongoose.Schema.Types.ObjectId, ref: 'Contact' },
@@ -59,6 +91,7 @@ const credentialSchema = new mongoose.Schema<ICredentialDocument>(
   { timestamps: true },
 );
 
+credentialSchema.index({ folder: 1 });
 credentialSchema.index({ category: 1 });
 credentialSchema.index({ linkedAsset: 1 });
 credentialSchema.index({ linkedVendor: 1 });

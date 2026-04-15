@@ -1,10 +1,30 @@
 import { apiClient } from './client';
-import type { CreateCredentialInput, UpdateCredentialInput } from '@itdesk/shared';
+import type { CreateCredentialInput, UpdateCredentialInput, CreateVaultFolderInput, UpdateVaultFolderInput, VaultFolderResponse } from '@itdesk/shared';
 
-export async function listCredentials(assetId?: string, vendorId?: string) {
+export async function listFolders(): Promise<VaultFolderResponse[]> {
+  const { data } = await apiClient.get('/vault/folders');
+  return data;
+}
+
+export async function createFolder(input: CreateVaultFolderInput): Promise<VaultFolderResponse> {
+  const { data } = await apiClient.post('/vault/folders', input);
+  return data;
+}
+
+export async function updateFolder(id: string, input: UpdateVaultFolderInput): Promise<VaultFolderResponse> {
+  const { data } = await apiClient.patch(`/vault/folders/${id}`, input);
+  return data;
+}
+
+export async function deleteFolder(id: string): Promise<void> {
+  await apiClient.delete(`/vault/folders/${id}`);
+}
+
+export async function listCredentials(assetId?: string, vendorId?: string, folderId?: string) {
   const params: Record<string, string> = {};
   if (assetId) params['assetId'] = assetId;
   if (vendorId) params['vendorId'] = vendorId;
+  if (folderId !== undefined) params['folderId'] = folderId;
   const { data } = await apiClient.get('/vault', { params: Object.keys(params).length ? params : undefined });
   return data;
 }

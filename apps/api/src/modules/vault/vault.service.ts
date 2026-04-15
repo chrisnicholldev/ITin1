@@ -1,9 +1,22 @@
 import mongoose from 'mongoose';
-import { Credential, VaultAudit, type ICredentialDocument } from './vault.model.js';
+import { Credential, VaultAudit, VaultFolder, type ICredentialDocument, type IVaultFolderDocument } from './vault.model.js';
 import { AppError } from '../../middleware/error.middleware.js';
 import { encrypt, decrypt } from '../../lib/crypto.js';
 import { VaultAccessLevel, VaultAuditAction, UserRole } from '@itdesk/shared';
-import type { CreateCredentialInput, UpdateCredentialInput } from '@itdesk/shared';
+import type { CreateCredentialInput, UpdateCredentialInput, CreateVaultFolderInput, UpdateVaultFolderInput } from '@itdesk/shared';
+
+function folderToResponse(doc: IVaultFolderDocument, credentialCount = 0) {
+  return {
+    id: doc.id as string,
+    name: doc.name,
+    icon: doc.icon,
+    colour: doc.colour,
+    sortOrder: doc.sortOrder,
+    credentialCount,
+    createdAt: doc.createdAt.toISOString(),
+    updatedAt: doc.updatedAt.toISOString(),
+  };
+}
 
 function toResponse(doc: ICredentialDocument) {
   const obj = doc.toObject({ virtuals: true });
@@ -14,6 +27,9 @@ function toResponse(doc: ICredentialDocument) {
     url: doc.url,
     notes: doc.notes,
     category: doc.category,
+    folder: obj.folder
+      ? { id: obj.folder._id?.toString() ?? obj.folder.id, name: obj.folder.name, icon: obj.folder.icon, colour: obj.folder.colour }
+      : undefined,
     linkedAsset: obj.linkedAsset
       ? { id: obj.linkedAsset._id?.toString() ?? obj.linkedAsset.id, name: obj.linkedAsset.name, assetTag: obj.linkedAsset.assetTag }
       : undefined,
@@ -66,11 +82,17 @@ async function logAudit(
   });
 }
 
-export async function listCredentials(userId: string, userRole: string, assetId?: string, vendorId?: string) {
+export async function listCredentials(userId: string, userRole: string, assetId?: string, vendorId?: string, folderId?: string) {
   const filter: Record<string, unknown> = {};
   if (assetId) filter['linkedAsset'] = new mongoose.Types.ObjectId(assetId);
   if (vendorId) filter['linkedVendor'] = new mongoose.Types.ObjectId(vendorId);
+  if (folderId === 'none') {
+    filter['folder'] = { $exists: false };
+  } else if (folderId) {
+    filter['folder'] = new mongoose.Types.ObjectId(folderId);
+  }
   const docs = await Credential.find(filter)
+    .populate('folder', 'name icon colour')
     .populate('linkedAsset', 'name assetTag')
     .populate('linkedVendor', 'name')
     .populate('linkedContact', 'displayName phone email')
@@ -83,6 +105,7 @@ export async function listCredentials(userId: string, userRole: string, assetId?
 
 export async function getCredential(id: string) {
   const doc = await Credential.findById(id)
+    .populate('folder', 'name icon colour')
     .populate('linkedAsset', 'name assetTag')
     .populate('linkedVendor', 'name')
     .populate('linkedContact', 'displayName phone email')
@@ -121,6 +144,7 @@ export async function createCredential(input: CreateCredentialInput, userId: str
     url: input.url,
     notes: input.notes,
     category: input.category,
+    folder: input.folderId ? new mongoose.Types.ObjectId(input.folderId) : undefined,
     linkedAsset: input.linkedAsset ? new mongoose.Types.ObjectId(input.linkedAsset) : undefined,
     linkedVendor: input.linkedVendor ? new mongoose.Types.ObjectId(input.linkedVendor) : undefined,
     linkedContact: input.linkedContact ? new mongoose.Types.ObjectId(input.linkedContact) : undefined,
@@ -147,6 +171,9 @@ export async function updateCredential(id: string, input: UpdateCredentialInput,
   if (input.url !== undefined) updates['url'] = input.url;
   if (input.notes !== undefined) updates['notes'] = input.notes;
   if (input.category !== undefined) updates['category'] = input.category;
+  if (input.folderId !== undefined) {
+    updates['folder'] = input.folderId ? new mongoose.Types.ObjectId(input.folderId) : null;
+  }
   if (input.tags !== undefined) updates['tags'] = input.tags;
   if (input.linkedAsset !== undefined) {
     updates['linkedAsset'] = input.linkedAsset ? new mongoose.Types.ObjectId(input.linkedAsset) : null;
@@ -215,6 +242,39 @@ export async function importCredentials(
     imported++;
   }
   return { imported, skipped };
+}
+
+// ── Folder CRUD ───────────────────────────────────────────────────────────────
+
+export async function listFolders() {
+  const folders = await VaultFolder.find().sort({ sortOrder: 1, name: 1 }) as IVaultFolderDocument[];
+  const counts = await Credential.aggregate([
+    { $group: { _id: '$folder', count: { $sum: 1 } } },
+  ]);
+  const countMap = new Map<string, number>(
+    counts.map((c: { _id: unknown; count: number }) => [String(c._id), c.count]),
+  );
+  return folders.map((f) => folderToResponse(f, countMap.get(f.id as string) ?? 0));
+}
+
+export async function createFolder(input: CreateVaultFolderInput) {
+  const doc = await VaultFolder.create(input) as IVaultFolderDocument;
+  return folderToResponse(doc, 0);
+}
+
+export async function updateFolder(id: string, input: UpdateVaultFolderInput) {
+  const doc = await VaultFolder.findByIdAndUpdate(id, { $set: input }, { new: true, runValidators: true }) as IVaultFolderDocument | null;
+  if (!doc) throw new AppError(404, 'Folder not found');
+  const count = await Credential.countDocuments({ folder: doc._id });
+  return folderToResponse(doc, count);
+}
+
+export async function deleteFolder(id: string) {
+  const doc = await VaultFolder.findById(id);
+  if (!doc) throw new AppError(404, 'Folder not found');
+  // Unset folder on credentials that were in this folder
+  await Credential.updateMany({ folder: doc._id }, { $unset: { folder: 1 } });
+  await VaultFolder.findByIdAndDelete(id);
 }
 
 export async function getAuditLog(credentialId?: string) {
