@@ -8,6 +8,7 @@ import { runAssetAlerts } from '../modules/assets/asset-alerts.service.js';
 import { runSslCertAlerts } from '../modules/ssl-certs/ssl-cert-alerts.service.js';
 import { refreshAllCerts } from '../modules/ssl-certs/ssl-cert.service.js';
 import { runLicenseAlerts } from '../modules/licenses/license-alerts.service.js';
+import { runContractAlerts } from '../modules/contracts/contract-alerts.service.js';
 
 // BullMQ requires its own connection config — passing the shared ioredis instance
 // causes version mismatch errors due to pnpm deduplication. Use URL-parsed options instead.
@@ -85,6 +86,7 @@ let adWorker: Worker | null = null;
 let assetAlertsWorker: Worker | null = null;
 let sslCertWorker: Worker | null = null;
 let licenseAlertsWorker: Worker | null = null;
+let contractAlertsWorker: Worker | null = null;
 
 export async function startWorkers() {
   const [intuneCfg, merakiCfg, adCfg] = await Promise.all([
@@ -251,6 +253,33 @@ export async function startWorkers() {
     { name: 'alerts', data: {} },
   );
   console.log('[license-alerts] Worker started, schedule: daily at 08:15');
+
+  // ── Contract alerts worker (daily at 08:30) ────────────────────────────────
+
+  const CONTRACT_ALERTS_QUEUE   = 'contract-alerts';
+  const CONTRACT_ALERTS_JOB_KEY = 'contract-alerts-daily';
+  const contractAlertsQueue     = new Queue(CONTRACT_ALERTS_QUEUE, { connection });
+
+  contractAlertsWorker = new Worker(
+    CONTRACT_ALERTS_QUEUE,
+    async () => {
+      console.log('[contract-alerts] Running renewal digest');
+      const result = await runContractAlerts();
+      console.log(`[contract-alerts] Done — sent to ${result.sent}/${result.recipients} admins`);
+    },
+    { connection, concurrency: 1 },
+  );
+
+  contractAlertsWorker.on('failed', (job, err) => {
+    console.error(`[contract-alerts] Job ${job?.id} failed:`, err.message);
+  });
+
+  await contractAlertsQueue.upsertJobScheduler(
+    CONTRACT_ALERTS_JOB_KEY,
+    { pattern: '30 8 * * *' },
+    { name: 'alerts', data: {} },
+  );
+  console.log('[contract-alerts] Worker started, schedule: daily at 08:30');
 }
 
 // ── Live schedule updates (called after config saves) ─────────────────────────
@@ -304,6 +333,7 @@ export async function stopWorkers() {
   if (assetAlertsWorker) { await assetAlertsWorker.close(); assetAlertsWorker = null; }
   if (sslCertWorker) { await sslCertWorker.close(); sslCertWorker = null; }
   if (licenseAlertsWorker) { await licenseAlertsWorker.close(); licenseAlertsWorker = null; }
+  if (contractAlertsWorker) { await contractAlertsWorker.close(); contractAlertsWorker = null; }
   await intuneQueue.close();
   await merakiQueue.close();
   await adQueue.close();
