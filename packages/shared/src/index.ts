@@ -17,3 +17,4 @@ export * from './schemas/vendor.schema.js';
 export * from './schemas/license.schema.js';
 export * from './schemas/contract.schema.js';
 export * from './schemas/changelog.schema.js';
+export * from './schemas/checklist.schema.js';
