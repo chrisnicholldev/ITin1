@@ -31,6 +31,7 @@ import { LicensesPage } from '@/pages/licenses/LicensesPage';
 import { ContractsPage } from '@/pages/contracts/ContractsPage';
 import { RenewalsPage } from '@/pages/renewals/RenewalsPage';
 import { ChangelogPage } from '@/pages/changelog/ChangelogPage';
+import { ChecklistsPage } from '@/pages/checklists/ChecklistsPage';
 
 export const router = createBrowserRouter(
   [
@@ -68,6 +69,7 @@ export const router = createBrowserRouter(
         { path: 'contracts', element: <ContractsPage /> },
         { path: 'renewals', element: <RenewalsPage /> },
         { path: 'changelog', element: <ChangelogPage /> },
+        { path: 'checklists', element: <ChecklistsPage /> },
         { path: 'vendors', element: <VendorsPage /> },
         { path: 'contacts', element: <ContactsPage /> },
         { path: 'admin/users', element: <UsersPage /> },

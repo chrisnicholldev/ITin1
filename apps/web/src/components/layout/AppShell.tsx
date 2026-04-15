@@ -28,6 +28,7 @@ import {
   FileText,
   CalendarClock,
   ClipboardList,
+  ListChecks,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GlobalSearch } from '@/components/GlobalSearch';
@@ -46,6 +47,7 @@ const navItems = [
   { href: '/contracts', label: 'Contracts', icon: FileText, minRole: 'it_technician' },
   { href: '/renewals', label: 'Renewals', icon: CalendarClock, minRole: 'it_technician' },
   { href: '/changelog', label: 'Change Log', icon: ClipboardList, minRole: 'it_technician' },
+  { href: '/checklists', label: 'Checklists', icon: ListChecks, minRole: 'it_technician' },
   { href: '/vendors', label: 'Vendors', icon: Building2, minRole: 'it_technician' },
   { href: '/contacts', label: 'Contacts', icon: ContactRound, minRole: 'it_technician' },
   { href: '/admin/locations', label: 'Locations', icon: MapPin, minRole: 'it_admin' },
