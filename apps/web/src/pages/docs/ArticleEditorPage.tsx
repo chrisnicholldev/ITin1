@@ -28,6 +28,7 @@ export function ArticleEditorPage() {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [published, setPublished] = useState(true);
+  const [sourceUrl, setSourceUrl] = useState('');
   const [initialised, setInitialised] = useState(false);
 
   const { data: folders = [] } = useQuery<DocFolderResponse[]>({
@@ -55,6 +56,7 @@ export function ArticleEditorPage() {
       setLocationId((article.linkedLocation as any)?.id ?? '');
       setTags(article.tags ?? []);
       setPublished(article.published);
+      setSourceUrl((article as any).sourceUrl ?? '');
       setInitialised(true);
     }
   }, [article, initialised]);
@@ -69,6 +71,7 @@ export function ArticleEditorPage() {
         linkedAssets: [],
         tags,
         published,
+        sourceUrl: sourceUrl.trim() || undefined,
       };
       return isEditing ? updateArticle(slug!, payload) : createArticle(payload);
     },
@@ -181,6 +184,17 @@ export function ArticleEditorPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Source URL */}
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Source document URL</Label>
+        <Input
+          placeholder="https://…"
+          value={sourceUrl}
+          onChange={(e) => setSourceUrl(e.target.value)}
+          className="h-9"
+        />
       </div>
 
       {/* Editor */}

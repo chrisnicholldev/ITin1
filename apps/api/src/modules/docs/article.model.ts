@@ -9,6 +9,7 @@ export interface IArticle {
   linkedAssets: mongoose.Types.ObjectId[];
   linkedLocation?: mongoose.Types.ObjectId;
   tags: string[];
+  sourceUrl?: string;
   publishedAt?: Date;
   createdBy: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
@@ -28,6 +29,7 @@ const articleSchema = new mongoose.Schema<IArticleDocument>(
     linkedAssets: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Asset' }],
     linkedLocation: { type: mongoose.Schema.Types.ObjectId, ref: 'Location' },
     tags: [{ type: String }],
+    sourceUrl: { type: String },
     publishedAt: Date,
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

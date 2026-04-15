@@ -7,6 +7,7 @@ import { getIntuneRuntimeConfig, getMerakiRuntimeConfig, getAdRuntimeConfig } fr
 import { runAssetAlerts } from '../modules/assets/asset-alerts.service.js';
 import { runSslCertAlerts } from '../modules/ssl-certs/ssl-cert-alerts.service.js';
 import { refreshAllCerts } from '../modules/ssl-certs/ssl-cert.service.js';
+import { runLicenseAlerts } from '../modules/licenses/license-alerts.service.js';
 
 // BullMQ requires its own connection config — passing the shared ioredis instance
 // causes version mismatch errors due to pnpm deduplication. Use URL-parsed options instead.
@@ -62,6 +63,13 @@ export async function addAssetAlerts() {
   await assetAlertsQueue.add('alerts', {}, { jobId: `manual-${Date.now()}` });
 }
 
+// ── License alerts queue ──────────────────────────────────────────────────────
+
+const LICENSE_ALERTS_QUEUE   = 'license-alerts';
+const LICENSE_ALERTS_JOB_KEY = 'license-alerts-daily';
+
+export const licenseAlertsQueue = new Queue(LICENSE_ALERTS_QUEUE, { connection });
+
 // ── SSL cert queue ────────────────────────────────────────────────────────────
 
 const SSL_CERT_QUEUE     = 'ssl-cert-checks';
@@ -76,6 +84,7 @@ let merakiWorker: Worker | null = null;
 let adWorker: Worker | null = null;
 let assetAlertsWorker: Worker | null = null;
 let sslCertWorker: Worker | null = null;
+let licenseAlertsWorker: Worker | null = null;
 
 export async function startWorkers() {
   const [intuneCfg, merakiCfg, adCfg] = await Promise.all([
@@ -219,6 +228,29 @@ export async function startWorkers() {
     { name: 'check', data: {} },
   );
   console.log('[ssl-certs] Worker started, schedule: daily at 07:00');
+
+  // ── License alerts worker (daily at 08:15) ─────────────────────────────────
+
+  licenseAlertsWorker = new Worker(
+    LICENSE_ALERTS_QUEUE,
+    async () => {
+      console.log('[license-alerts] Running renewal digest');
+      const result = await runLicenseAlerts();
+      console.log(`[license-alerts] Done — sent to ${result.sent}/${result.recipients} admins`);
+    },
+    { connection, concurrency: 1 },
+  );
+
+  licenseAlertsWorker.on('failed', (job, err) => {
+    console.error(`[license-alerts] Job ${job?.id} failed:`, err.message);
+  });
+
+  await licenseAlertsQueue.upsertJobScheduler(
+    LICENSE_ALERTS_JOB_KEY,
+    { pattern: '15 8 * * *' },
+    { name: 'alerts', data: {} },
+  );
+  console.log('[license-alerts] Worker started, schedule: daily at 08:15');
 }
 
 // ── Live schedule updates (called after config saves) ─────────────────────────
@@ -271,9 +303,11 @@ export async function stopWorkers() {
   if (adWorker) { await adWorker.close(); adWorker = null; }
   if (assetAlertsWorker) { await assetAlertsWorker.close(); assetAlertsWorker = null; }
   if (sslCertWorker) { await sslCertWorker.close(); sslCertWorker = null; }
+  if (licenseAlertsWorker) { await licenseAlertsWorker.close(); licenseAlertsWorker = null; }
   await intuneQueue.close();
   await merakiQueue.close();
   await adQueue.close();
   await assetAlertsQueue.close();
   await sslCertQueue.close();
+  await licenseAlertsQueue.close();
 }

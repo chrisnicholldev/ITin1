@@ -163,6 +163,20 @@ export function ArticlePage() {
           <p className="text-sm">{(article.linkedLocation as any).name}</p>
         </div>
       )}
+
+      {/* Source document */}
+      {article.sourceUrl && (
+        <div className="border-t pt-4">
+          <a
+            href={article.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+          >
+            View source document →
+          </a>
+        </div>
+      )}
     </div>
   );
 }
