@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: mailto:security@chrisnicholl.com
+    about: Please report security issues by email, not as a public issue.
+  - name: Documentation
+    url: https://github.com/chrisnicholldev/ITInternal/tree/main/docs
+    about: Deployment and setup documentation.
