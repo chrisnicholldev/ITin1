@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import * as service from './vault.service.js';
-import { CreateCredentialSchema, UpdateCredentialSchema } from '@itdesk/shared';
+import { CreateCredentialSchema, UpdateCredentialSchema, CreateVaultFolderSchema, UpdateVaultFolderSchema } from '@itdesk/shared';
 import { AppError } from '../../middleware/error.middleware.js';
 import type { AuthenticatedRequest } from '../../middleware/auth.middleware.js';
 
@@ -14,11 +14,36 @@ function clientIp(req: Request): string | undefined {
   return req.socket.remoteAddress;
 }
 
+export async function listFolders(_req: Request, res: Response) {
+  const data = await service.listFolders();
+  res.json(data);
+}
+
+export async function createFolder(req: Request, res: Response) {
+  const parsed = CreateVaultFolderSchema.safeParse(req.body);
+  if (!parsed.success) throw new AppError(400, 'Validation error: ' + JSON.stringify(parsed.error.flatten().fieldErrors));
+  const data = await service.createFolder(parsed.data);
+  res.status(201).json(data);
+}
+
+export async function updateFolder(req: Request, res: Response) {
+  const parsed = UpdateVaultFolderSchema.safeParse(req.body);
+  if (!parsed.success) throw new AppError(400, 'Validation error: ' + JSON.stringify(parsed.error.flatten().fieldErrors));
+  const data = await service.updateFolder(String(req.params['id']), parsed.data);
+  res.json(data);
+}
+
+export async function deleteFolder(req: Request, res: Response) {
+  await service.deleteFolder(String(req.params['id']));
+  res.status(204).end();
+}
+
 export async function listCredentials(req: Request, res: Response) {
   const assetId = req.query['assetId'] as string | undefined;
   const vendorId = req.query['vendorId'] as string | undefined;
+  const folderId = req.query['folderId'] as string | undefined;
   const { id, role } = (req as AuthenticatedRequest).user;
-  const data = await service.listCredentials(id, role, assetId, vendorId);
+  const data = await service.listCredentials(id, role, assetId, vendorId, folderId);
   res.json(data);
 }
 

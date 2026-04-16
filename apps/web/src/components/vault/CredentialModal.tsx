@@ -9,12 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { createCredential, updateCredential } from '@/api/vault';
+import { createCredential, updateCredential, listFolders } from '@/api/vault';
 import { getAssets } from '@/api/assets';
 import { getUsers } from '@/api/users';
 import { getVendors } from '@/api/vendors';
 import { getContacts } from '@/api/contacts';
-import { CreateCredentialSchema, CredentialCategory, VaultAccessLevel, type CreateCredentialInput, type CredentialResponse } from '@itdesk/shared';
+import { CreateCredentialSchema, CredentialCategory, VaultAccessLevel, type CreateCredentialInput, type CredentialResponse, type VaultFolderResponse } from '@itdesk/shared';
 
 // Password is optional in this form schema — we validate it manually for create mode
 // so that editing without changing the password doesn't block submission.
@@ -49,6 +49,8 @@ interface Props {
   preLinkedVendorId?: string;
   /** Pre-select a contact in the linked contact dropdown */
   preLinkedContactId?: string;
+  /** Pre-select a folder (used when creating from a folder context) */
+  defaultFolderId?: string;
 }
 
 const ACCESS_LEVEL_LABELS: Record<string, string> = {
@@ -57,7 +59,7 @@ const ACCESS_LEVEL_LABELS: Record<string, string> = {
   restricted: 'Specific Users',
 };
 
-export function CredentialModal({ open, onClose, editing, preLinkedAssetId, preLinkedVendorId, preLinkedContactId }: Props) {
+export function CredentialModal({ open, onClose, editing, preLinkedAssetId, preLinkedVendorId, preLinkedContactId, defaultFolderId }: Props) {
   const queryClient = useQueryClient();
   const [allowedUserIds, setAllowedUserIds] = useState<string[]>(
     editing?.allowedUsers?.map((u) => u.id) ?? [],
@@ -81,6 +83,11 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId, preL
   });
   const contacts = contactsData;
 
+  const { data: foldersData = [] } = useQuery<VaultFolderResponse[]>({
+    queryKey: ['vault', 'folders'],
+    queryFn: listFolders,
+  });
+
   const { data: usersData } = useQuery({
     queryKey: ['users', 'all'],
     queryFn: () => getUsers({ limit: 200 }),
@@ -97,6 +104,7 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId, preL
           url: editing.url ?? '',
           notes: editing.notes ?? '',
           category: editing.category as CredentialFormValues['category'],
+          folderId: (editing as any).folder?.id ?? '',
           linkedAsset: editing.linkedAsset?.id ?? preLinkedAssetId ?? '',
           linkedVendor: (editing as any).linkedVendor?.id ?? preLinkedVendorId ?? '',
           linkedContact: (editing as any).linkedContact?.id ?? preLinkedContactId ?? '',
@@ -106,6 +114,7 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId, preL
         }
       : {
           category: CredentialCategory.OTHER,
+          folderId: defaultFolderId ?? '',
           tags: [],
           linkedAsset: preLinkedAssetId ?? '',
           linkedVendor: preLinkedVendorId ?? '',
@@ -125,6 +134,7 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId, preL
         url: editing.url ?? '',
         notes: editing.notes ?? '',
         category: editing.category as CredentialFormValues['category'],
+        folderId: (editing as any).folder?.id ?? '',
         linkedAsset: editing.linkedAsset?.id ?? preLinkedAssetId ?? '',
         linkedVendor: (editing as any).linkedVendor?.id ?? preLinkedVendorId ?? '',
         linkedContact: (editing as any).linkedContact?.id ?? preLinkedContactId ?? '',
@@ -136,6 +146,7 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId, preL
     } else {
       reset({
         category: CredentialCategory.OTHER,
+        folderId: defaultFolderId ?? '',
         tags: [],
         linkedAsset: preLinkedAssetId ?? '',
         linkedVendor: preLinkedVendorId ?? '',
@@ -158,6 +169,7 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId, preL
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vault'] });
+      queryClient.invalidateQueries({ queryKey: ['vault', 'folders'] });
       reset();
       setAllowedUserIds([]);
       onClose();
@@ -173,6 +185,7 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId, preL
   const defaultAssetValue = editing?.linkedAsset?.id ?? preLinkedAssetId ?? 'none';
   const defaultVendorValue = (editing as any)?.linkedVendor?.id ?? preLinkedVendorId ?? 'none';
   const defaultContactValue = (editing as any)?.linkedContact?.id ?? preLinkedContactId ?? 'none';
+  const defaultFolderValue = (editing as any)?.folder?.id ?? defaultFolderId ?? 'none';
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -222,6 +235,23 @@ export function CredentialModal({ open, onClose, editing, preLinkedAssetId, preL
               </Select>
             </Field>
           </div>
+
+          <Field label="Folder">
+            <Select
+              defaultValue={defaultFolderValue}
+              onValueChange={(v) => setValue('folderId' as any, v === 'none' ? '' : v)}
+            >
+              <SelectTrigger><SelectValue placeholder="No folder" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No folder</SelectItem>
+                {foldersData.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.icon ? `${f.icon} ` : ''}{f.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
 
           <Field label="Linked Vendor">
             <Select

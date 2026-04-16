@@ -10,6 +10,12 @@ router.use(requireAuth, requireTech);
 // Audit log — admin only
 router.get('/audit', requireAdmin, c.getAuditLog);
 
+// Folder CRUD
+router.get('/folders', c.listFolders);
+router.post('/folders', requireAdmin, c.createFolder);
+router.patch('/folders/:id', requireAdmin, c.updateFolder);
+router.delete('/folders/:id', requireAdmin, c.deleteFolder);
+
 // Credential CRUD
 router.get('/', c.listCredentials);
 router.post('/', requireAdmin, c.createCredential);
