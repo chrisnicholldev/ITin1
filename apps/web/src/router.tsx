@@ -1,5 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
+import { SetupGuard } from '@/components/layout/SetupGuard';
+import { SetupPage } from '@/pages/setup/SetupPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { AzureCallbackPage } from '@/pages/auth/AzureCallbackPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
@@ -36,8 +38,12 @@ import { ChecklistsPage } from '@/pages/checklists/ChecklistsPage';
 export const router = createBrowserRouter(
   [
     {
+      path: '/setup',
+      element: <SetupPage />,
+    },
+    {
       path: '/login',
-      element: <LoginPage />,
+      element: <SetupGuard><LoginPage /></SetupGuard>,
     },
     {
       path: '/auth/callback',
@@ -45,7 +51,7 @@ export const router = createBrowserRouter(
     },
     {
       path: '/',
-      element: <ProtectedRoute />,
+      element: <SetupGuard><ProtectedRoute /></SetupGuard>,
       children: [
         { index: true, element: <Navigate to="/dashboard" replace /> },
         { path: 'dashboard', element: <DashboardPage /> },
