@@ -26,11 +26,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck shared
-        run: pnpm --filter @itdesk/shared exec tsc --noEmit
+      - name: Build shared package
+        run: pnpm --filter @itdesk/shared build
 
-      - name: Typecheck API
-        run: pnpm --filter api exec tsc --noEmit
-
-      - name: Typecheck web
-        run: pnpm --filter web exec tsc --noEmit
+      - name: Typecheck all packages
+        run: pnpm typecheck
