@@ -1,4 +1,4 @@
-# Contributing to ITDesk
+# Contributing to ITin1
 
 Thanks for your interest in contributing. This document covers how to get a local development environment running and how to submit changes.
 
@@ -46,8 +46,8 @@ Thanks for your interest in contributing. This document covers how to get a loca
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/chrisnicholldev/ITInternal.git
-cd ITInternal
+git clone https://github.com/chrisnicholldev/ITin1.git
+cd ITin1
 ```
 
 ### 2. Install dependencies
@@ -117,7 +117,7 @@ On first run, the setup wizard will appear at http://localhost:5173/setup. Compl
 ## Project structure
 
 ```
-ITInternal/
+ITin1/
 ├── apps/
 │   ├── api/                  # Express API
 │   │   └── src/

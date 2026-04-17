@@ -1,5 +1,5 @@
 #!/bin/bash
-# ITDesk update script
+# ITin1 update script
 # Usage: bash update.sh
 # Pulls latest code, rebuilds Docker images, and restarts services.
 
@@ -28,7 +28,7 @@ START_TIME=$(date +%s)
 step "Pre-flight checks"
 
 if [ ! -f "$COMPOSE_FILE" ]; then
-  error "Not in the ITDesk project root. Run this script from /opt/itdesk (or wherever you cloned the repo)."
+  error "Not in the ITin1 project root. Run this script from /opt/itdesk (or wherever you cloned the repo)."
 fi
 
 if ! command -v docker &>/dev/null; then

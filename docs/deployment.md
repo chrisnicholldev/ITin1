@@ -1,6 +1,6 @@
 # Deployment Guide — Ubuntu Server
 
-ITDesk runs as a Docker Compose stack. This guide covers a fresh Ubuntu Server install.
+ITin1 runs as a Docker Compose stack. This guide covers a fresh Ubuntu Server install.
 
 ---
 

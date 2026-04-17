@@ -1,6 +1,6 @@
-# ITDesk — Developer Manual
+# ITin1 — Developer Manual
 
-A complete reference for understanding, maintaining, and extending the ITDesk codebase. Written for the person who built it and anyone who needs to take it over.
+A complete reference for understanding, maintaining, and extending the ITin1 codebase. Written for the person who built it and anyone who needs to take it over.
 
 ---
 
@@ -27,7 +27,7 @@ A complete reference for understanding, maintaining, and extending the ITDesk co
 
 ## 1. Overview
 
-ITDesk is a self-hosted IT management platform. It is a monorepo containing three packages:
+ITin1 is a self-hosted IT management platform. It is a monorepo containing three packages:
 
 - **`apps/api`** — a Node.js/Express REST API
 - **`apps/web`** — a React single-page application
@@ -60,7 +60,7 @@ In production, both the API and web are built into Docker images and run behind 
 ## 3. Repository layout
 
 ```
-ITInternal/
+ITin1/
 ├── apps/
 │   ├── api/                        # Express API application
 │   │   ├── src/
@@ -345,7 +345,7 @@ const roleWeight = { end_user: 0, it_technician: 1, it_admin: 2, super_admin: 3 
 
 ### LDAP/AD authentication
 
-When `LDAP_ENABLED` is true (or enabled via the admin UI), login attempts are routed through `ldapjs` to authenticate against the domain controller. On successful LDAP auth, the user's group memberships are checked against the configured group DNs to assign a role. The user record is upserted in MongoDB on each login — LDAP is the source of truth for credentials, but ITDesk stores the profile.
+When `LDAP_ENABLED` is true (or enabled via the admin UI), login attempts are routed through `ldapjs` to authenticate against the domain controller. On successful LDAP auth, the user's group memberships are checked against the configured group DNs to assign a role. The user record is upserted in MongoDB on each login — LDAP is the source of truth for credentials, but ITin1 stores the profile.
 
 ### Two-factor authentication
 

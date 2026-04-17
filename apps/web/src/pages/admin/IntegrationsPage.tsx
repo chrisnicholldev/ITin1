@@ -125,7 +125,7 @@ function IntuneConfigForm({ config, onSaved }: { config: IntegrationConfig['intu
   return (
     <div className="space-y-3 pt-2">
       <SetupGuide title="How to set up Microsoft Intune integration" steps={[
-        <>Go to <strong>portal.azure.com</strong> → Azure Active Directory → App registrations → New registration. Name it (e.g. "ITDesk Sync") and register.</>,
+        <>Go to <strong>portal.azure.com</strong> → Azure Active Directory → App registrations → New registration. Name it (e.g. "ITin1 Sync") and register.</>,
         <>Under the new app, go to <strong>Certificates &amp; secrets</strong> → New client secret. Copy the value immediately — it won't be shown again.</>,
         <>Go to <strong>API permissions</strong> → Add a permission → Microsoft Graph → Application permissions. Add <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">DeviceManagementManagedDevices.Read.All</code> and <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">User.Read.All</code>.</>,
         <>Click <strong>Grant admin consent</strong> for your organisation.</>,

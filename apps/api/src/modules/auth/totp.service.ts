@@ -2,7 +2,7 @@ import { TOTP, Secret } from 'otpauth';
 import QRCode from 'qrcode';
 import { randomBytes, createHash } from 'crypto';
 
-const ISSUER = 'ITDesk';
+const ISSUER = 'ITin1';
 
 export function generateSecret(): string {
   return new Secret({ size: 20 }).base32;

@@ -1,4 +1,4 @@
-# ITDesk
+# ITin1
 
 A self-hosted IT management platform for small and mid-sized organisations. Built for IT teams who want a single place to manage assets, credentials, documentation, and operations — without sending data to a third party.
 
@@ -104,7 +104,7 @@ _Screenshots coming soon._
 ## Quick Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/chrisnicholldev/ITInternal/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/chrisnicholldev/ITin1/main/install.sh | bash
 ```
 
 _Installs Docker if needed, generates secrets, and starts the stack. See [docs/deployment.md](docs/deployment.md) for manual installation._
@@ -196,4 +196,8 @@ To report a vulnerability, see [SECURITY.md](SECURITY.md). Do not open a public 
 
 ## Licence
 
-[AGPL-3.0](LICENSE) — Copyright (C) 2024 chrisnicholldev
+ITin1 is open source under [AGPL-3.0](LICENSE) — free to self-host and modify, provided modifications are kept open source.
+
+If you need to use ITin1 without AGPL obligations (proprietary or commercial use), a commercial license is available. See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md) or contact **dev@chrisnicholl.com**.
+
+Copyright (C) 2025 Chris Nicholl

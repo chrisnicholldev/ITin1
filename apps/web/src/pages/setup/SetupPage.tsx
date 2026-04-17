@@ -93,7 +93,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
         </div>
       </div>
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold">Welcome to ITDesk</h1>
+        <h1 className="text-3xl font-bold">Welcome to ITin1</h1>
         <p className="text-muted-foreground max-w-md mx-auto">
           Let's get your instance set up. This will only take a couple of minutes.
           We'll walk you through the essentials — you can configure everything else from the admin panel later.
@@ -270,11 +270,11 @@ function StepSmtp({ form, setForm }: { form: FormState; setForm: (f: Partial<For
               />
             </Field>
           </div>
-          <Field label="From address" hint={'e.g. "ITDesk <itdesk@example.com>"'}>
+          <Field label="From address" hint={'e.g. "ITin1 <itdesk@example.com>"'}>
             <Input
               value={form.smtpFrom}
               onChange={(e) => setForm({ smtpFrom: e.target.value })}
-              placeholder="ITDesk <itdesk@example.com>"
+              placeholder="ITin1 <itdesk@example.com>"
             />
           </Field>
         </div>
@@ -294,7 +294,7 @@ function StepDone({ orgName, onLogin }: { orgName: string; onLogin: () => void }
       <div className="space-y-2">
         <h2 className="text-2xl font-bold">You're all set!</h2>
         <p className="text-muted-foreground">
-          <strong>{orgName || 'ITDesk'}</strong> is ready. Sign in with the admin account you just created.
+          <strong>{orgName || 'ITin1'}</strong> is ready. Sign in with the admin account you just created.
         </p>
       </div>
       <div className="text-left border rounded-lg p-4 space-y-2 max-w-sm mx-auto bg-muted/40">

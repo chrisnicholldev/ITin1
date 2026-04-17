@@ -123,7 +123,7 @@ router.post('/integrations/config/smtp/test', requireAuth, requireAdmin, async (
   const { to } = req.body as { to?: string };
   if (!to) { res.status(400).json({ error: 'Recipient email required' }); return; }
   try {
-    await sendMail(to, 'ITDesk — SMTP test', `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;padding:32px;color:#18181b"><h2>SMTP test successful</h2><p>Your SMTP configuration is working correctly.</p></body></html>`);
+    await sendMail(to, 'ITin1 — SMTP test', `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;padding:32px;color:#18181b"><h2>SMTP test successful</h2><p>Your SMTP configuration is working correctly.</p></body></html>`);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err?.message ?? 'Failed to send test email' });

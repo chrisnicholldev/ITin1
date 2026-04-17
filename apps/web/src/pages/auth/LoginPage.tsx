@@ -226,7 +226,7 @@ export function LoginPage() {
                   <ShieldCheck className="w-10 h-10 text-primary" />
                 </div>
                 <p className="text-sm text-center text-muted-foreground">
-                  Open your authenticator app and enter the 6-digit code for <strong>ITDesk</strong>.
+                  Open your authenticator app and enter the 6-digit code for <strong>ITin1</strong>.
                   You can also enter a recovery code.
                 </p>
                 <div className="space-y-2">

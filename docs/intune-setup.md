@@ -1,14 +1,14 @@
 # Intune Integration Setup
 
-ITDesk syncs managed devices from Microsoft Intune via the Microsoft Graph API using OAuth2 client credentials (app-to-app, no user login required).
+ITin1 syncs managed devices from Microsoft Intune via the Microsoft Graph API using OAuth2 client credentials (app-to-app, no user login required).
 
 ---
 
 ## What gets synced
 
-Each managed device in Intune is created or updated as an asset in ITDesk. Fields mapped:
+Each managed device in Intune is created or updated as an asset in ITin1. Fields mapped:
 
-| Intune field | ITDesk field |
+| Intune field | ITin1 field |
 |---|---|
 | `deviceName` | `name` |
 | `operatingSystem` / `deviceType` | `type` (LAPTOP, WORKSTATION, PHONE, etc.) |
@@ -25,14 +25,14 @@ Each managed device in Intune is created or updated as an asset in ITDesk. Field
 
 Assets are matched by Intune device ID (`externalId`). Existing assets are updated; new devices create new assets with `externalSource: intune`.
 
-Synced assets are **never deleted** by the sync — if a device is removed from Intune, its asset stays in ITDesk with its last-known data.
+Synced assets are **never deleted** by the sync — if a device is removed from Intune, its asset stays in ITin1 with its last-known data.
 
 ---
 
 ## Step 1 — Create an Azure App Registration
 
 1. Go to [portal.azure.com](https://portal.azure.com) → **Microsoft Entra ID** → **App registrations** → **New registration**
-2. Name it something like `ITDesk Sync`
+2. Name it something like `ITin1 Sync`
 3. Leave redirect URI blank (not needed for client credentials)
 4. Click **Register**
 
@@ -54,7 +54,7 @@ Note the **Application (client) ID** and **Directory (tenant) ID** from the over
 
 > **Why application permissions?** The sync runs on a schedule with no user interaction, so delegated permissions (which require a signed-in user) won't work.
 
-> **Why these permissions?** ITDesk reads from the Azure AD devices directory (`/devices`), which covers all Azure AD joined and registered devices regardless of whether full Intune MDM enrollment is active.
+> **Why these permissions?** ITin1 reads from the Azure AD devices directory (`/devices`), which covers all Azure AD joined and registered devices regardless of whether full Intune MDM enrollment is active.
 
 ---
 
@@ -66,7 +66,7 @@ Note the **Application (client) ID** and **Directory (tenant) ID** from the over
 
 ---
 
-## Step 4 — Configure ITDesk
+## Step 4 — Configure ITin1
 
 Add to your `infra/.env` file:
 
@@ -89,7 +89,7 @@ docker compose up -d --no-deps api
 
 ## Step 5 — Trigger a test sync
 
-Once running, go to **Admin → Integrations** in the ITDesk UI. You should see:
+Once running, go to **Admin → Integrations** in the ITin1 UI. You should see:
 
 - Configuration: **Configured**
 - Status toggle: **Enabled**
