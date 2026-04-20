@@ -1,5 +1,11 @@
 import { sendMail } from '../../lib/mailer.js';
 import { env } from '../../config/env.js';
+import { User } from '../users/user.model.js';
+
+async function getPrefs(email: string) {
+  const user = await User.findOne({ email }).select('notificationPreferences').lean();
+  return user?.notificationPreferences;
+}
 
 // ── Template helper ───────────────────────────────────────────────────────────
 
@@ -61,6 +67,8 @@ interface UserInfo {
 
 export async function notifyTicketCreated(ticket: TicketInfo, submitter: UserInfo) {
   if (!submitter.email) return;
+  const prefs = await getPrefs(submitter.email);
+  if (prefs?.onTicketCreated === false) return;
 
   const html = layout(
     'Your ticket has been received',
@@ -75,6 +83,8 @@ export async function notifyTicketCreated(ticket: TicketInfo, submitter: UserInf
 
 export async function notifyTicketAssigned(ticket: TicketInfo, assignee: UserInfo) {
   if (!assignee.email) return;
+  const prefs = await getPrefs(assignee.email);
+  if (prefs?.onTicketAssigned === false) return;
 
   const html = layout(
     'A ticket has been assigned to you',
@@ -89,6 +99,8 @@ export async function notifyTicketAssigned(ticket: TicketInfo, assignee: UserInf
 
 export async function notifyStatusChanged(ticket: TicketInfo, submitter: UserInfo, newStatus: string) {
   if (!submitter.email) return;
+  const prefs = await getPrefs(submitter.email);
+  if (prefs?.onStatusChanged === false) return;
 
   const label = newStatus.replace('_', ' ');
   const messages: Record<string, string> = {
@@ -125,7 +137,10 @@ export async function notifyCommentAdded(
     </div>`;
 
   // Notify submitter if comment is public and they didn't write it
-  if (!isInternal && submitter.email && submitter.displayName !== commenter.displayName) {
+  const submitterPrefs = submitter.email ? await getPrefs(submitter.email) : null;
+  const assigneePrefs = assignee?.email ? await getPrefs(assignee.email) : null;
+
+  if (!isInternal && submitter.email && submitter.displayName !== commenter.displayName && submitterPrefs?.onCommentAdded !== false) {
     const html = layout(
       'New reply on your ticket',
       `<p style="color:#3f3f46;font-size:14px;margin:0 0 16px">Hi ${submitter.displayName},</p>
@@ -137,7 +152,7 @@ export async function notifyCommentAdded(
   }
 
   // Notify assignee for all comments (public or internal), unless they wrote it
-  if (assignee?.email && assignee.displayName !== commenter.displayName) {
+  if (assignee?.email && assignee.displayName !== commenter.displayName && assigneePrefs?.onCommentAdded !== false) {
     const noteLabel = isInternal ? 'internal note' : 'reply';
     const html = layout(
       `New ${noteLabel} on assigned ticket`,

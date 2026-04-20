@@ -1,6 +1,13 @@
 import mongoose, { type Document, type Model } from 'mongoose';
 import { UserRole, AuthProvider } from '@itdesk/shared';
 
+export interface INotificationPreferences {
+  onTicketCreated: boolean;
+  onTicketAssigned: boolean;
+  onStatusChanged: boolean;
+  onCommentAdded: boolean;
+}
+
 export interface IUser {
   email: string;
   displayName: string;
@@ -21,6 +28,7 @@ export interface IUser {
   twoFactorSecret?: string;
   twoFactorPendingSecret?: string;
   twoFactorRecoveryCodes?: string[];
+  notificationPreferences: INotificationPreferences;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -56,6 +64,12 @@ const userSchema = new mongoose.Schema<IUserDocument>(
     twoFactorSecret: { type: String, select: false },
     twoFactorPendingSecret: { type: String, select: false },
     twoFactorRecoveryCodes: { type: [String], select: false },
+    notificationPreferences: {
+      onTicketCreated: { type: Boolean, default: true },
+      onTicketAssigned: { type: Boolean, default: true },
+      onStatusChanged: { type: Boolean, default: true },
+      onCommentAdded: { type: Boolean, default: true },
+    },
   },
   { timestamps: true },
 );

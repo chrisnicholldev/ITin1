@@ -12,9 +12,10 @@ import {
   getIntuneStatus, triggerIntuneSync, getIntuneLogs,
   getMerakiStatus, triggerMerakiSync, getMerakiLogs,
   getAdStatus, triggerAdSync, getAdLogs,
-  getIntegrationConfig, updateIntuneConfig, updateMerakiConfig, updateAdConfig, updateSmtpConfig, sendSmtpTestEmail,
+  getIntegrationConfig, updateIntuneConfig, updateMerakiConfig, updateAdConfig, updateSmtpConfig, sendSmtpTestEmail, updateImapConfig,
   type IntegrationConfig,
 } from '@/api/integrations';
+import { getCategories } from '@/api/categories';
 import { Mail } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -640,6 +641,149 @@ function SmtpConfigCard({ config }: { config: IntegrationConfig['smtp'] }) {
   );
 }
 
+// ── IMAP config card ──────────────────────────────────────────────────────────
+
+function ImapConfigCard({ config }: { config: IntegrationConfig['imap'] }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [enabled, setEnabled] = useState(config.enabled);
+  const [host, setHost] = useState(config.host);
+  const [port, setPort] = useState(String(config.port || 993));
+  const [user, setUser] = useState(config.user);
+  const [pass, setPass] = useState('');
+  const [folder, setFolder] = useState(config.folder || 'INBOX');
+  const [defaultCategoryId, setDefaultCategoryId] = useState(config.defaultCategoryId || '');
+
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => getCategories(),
+    enabled: open,
+  });
+  const categories: { id: string; name: string }[] = Array.isArray(categoriesData) ? categoriesData : [];
+
+  useEffect(() => {
+    if (!open) {
+      setEnabled(config.enabled);
+      setHost(config.host);
+      setPort(String(config.port || 993));
+      setUser(config.user);
+      setFolder(config.folder || 'INBOX');
+      setDefaultCategoryId(config.defaultCategoryId || '');
+    }
+  }, [config]);
+
+  const { mutate, isPending, error } = useMutation({
+    mutationFn: () => updateImapConfig({ enabled, host, port: Number(port), user, pass, folder, defaultCategoryId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['integration-config'] });
+      setOpen(false);
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Mail className="h-4 w-4" /> Email Ingestion (IMAP)
+            </CardTitle>
+            <CardDescription>Automatically create tickets from incoming emails</CardDescription>
+          </div>
+          <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
+            config.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+          }`}>
+            {config.enabled ? 'Enabled' : 'Disabled'}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 text-sm">
+          <div>
+            <p className="text-muted-foreground text-xs mb-0.5">Host</p>
+            <p className="font-medium">{config.host || <span className="text-muted-foreground">Not set</span>}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs mb-0.5">Folder</p>
+            <p>{config.folder || 'INBOX'}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs mb-0.5">Password</p>
+            <p>{config.hasPassword ? <span className="text-green-700">Saved</span> : <span className="text-amber-600">Not set</span>}</p>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setOpen(!open)} className="gap-1.5">
+            <Settings className="h-3.5 w-3.5" />
+            Configure
+            {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </Button>
+        </div>
+
+        {open && (
+          <div className="border rounded-md p-4 bg-muted/20 space-y-3">
+            <SetupGuide title="How to set up email ingestion" steps={[
+              <>Create a dedicated mailbox (e.g. <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">helpdesk@yourdomain.com</code>) for incoming ticket emails.</>,
+              <>Enable IMAP access on the mailbox. For <strong>Microsoft 365</strong>: use <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">outlook.office365.com</code> on port <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">993</code>. For <strong>Gmail</strong>: use <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">imap.gmail.com</code> port <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">993</code> with an App Password.</>,
+              <>Set a <strong>Default Category</strong> — all inbound emails will be assigned this category unless overridden.</>,
+              <>Replies that include <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">[TKT-12345]</code> in the subject will be added as comments on the existing ticket.</>,
+              <>Emails are polled every 5 minutes. Processed emails are marked as read.</>,
+            ]} />
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="imap-enabled" className="h-4 w-4"
+                checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+              <Label htmlFor="imap-enabled" className="font-normal cursor-pointer">Enable email ingestion</Label>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>IMAP Host</Label>
+                <Input value={host} onChange={(e) => setHost(e.target.value)} placeholder="imap.gmail.com" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Port</Label>
+                <Input value={port} onChange={(e) => setPort(e.target.value)} placeholder="993" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Username</Label>
+                <Input value={user} onChange={(e) => setUser(e.target.value)} placeholder="helpdesk@yourdomain.com" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Password {config.hasPassword && <span className="text-green-700 text-xs">(saved)</span>}</Label>
+                <SecretInput value={pass} onChange={setPass}
+                  placeholder="IMAP password or app password" hasExisting={config.hasPassword} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Mailbox Folder</Label>
+                <Input value={folder} onChange={(e) => setFolder(e.target.value)} placeholder="INBOX" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Default Category</Label>
+                <select
+                  value={defaultCategoryId}
+                  onChange={(e) => setDefaultCategoryId(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-white dark:bg-zinc-900 px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">— Select a category —</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {error && <p className="text-xs text-destructive">{(error as any)?.response?.data?.error ?? 'Failed to save'}</p>}
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => mutate()} disabled={isPending}>
+                {isPending ? 'Saving…' : 'Save IMAP Config'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function IntegrationsPage() {
@@ -729,6 +873,9 @@ export function IntegrationsPage() {
   const defaultSmtpConfig = {
     enabled: false, host: '', port: 587, user: '', hasPassword: false, from: '',
   };
+  const defaultImapConfig = {
+    enabled: false, host: '', port: 993, user: '', hasPassword: false, folder: 'INBOX', defaultCategoryId: '',
+  };
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -778,6 +925,8 @@ export function IntegrationsPage() {
       />
 
       <SmtpConfigCard config={integrationConfig?.smtp ?? defaultSmtpConfig} />
+
+      <ImapConfigCard config={integrationConfig?.imap ?? defaultImapConfig} />
 
       <IntegrationCard
         title="Active Directory"

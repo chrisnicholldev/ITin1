@@ -53,6 +53,15 @@ export async function getIntegrationConfigMasked() {
       hasPassword: !!(doc?.smtp?.passEnc ?? env.SMTP_PASS),
       from: doc?.smtp?.from ?? env.SMTP_FROM ?? '',
     },
+    imap: {
+      enabled: doc?.imap?.enabled ?? false,
+      host: doc?.imap?.host ?? '',
+      port: doc?.imap?.port ?? 993,
+      user: doc?.imap?.user ?? '',
+      hasPassword: !!(doc?.imap?.passEnc),
+      folder: doc?.imap?.folder ?? 'INBOX',
+      defaultCategoryId: doc?.imap?.defaultCategoryId ?? '',
+    },
   };
 }
 
@@ -257,4 +266,51 @@ export async function getAdRuntimeConfig() {
   const enabled = doc?.ad?.enabled ?? env.LDAP_ENABLED;
 
   return { enabled, url, bindDn, bindCredentials, searchBase, computerFilter, syncSchedule };
+}
+
+export async function updateImapConfig(input: {
+  enabled?: boolean;
+  host?: string;
+  port?: number;
+  user?: string;
+  pass?: string;
+  folder?: string;
+  defaultCategoryId?: string;
+}) {
+  const existing = await getDoc();
+
+  const imap: Record<string, unknown> = {
+    enabled: input.enabled ?? existing?.imap?.enabled ?? false,
+    host: input.host ?? existing?.imap?.host,
+    port: input.port ?? existing?.imap?.port,
+    user: input.user ?? existing?.imap?.user,
+    passEnc: existing?.imap?.passEnc,
+    folder: input.folder ?? existing?.imap?.folder ?? 'INBOX',
+    defaultCategoryId: input.defaultCategoryId ?? existing?.imap?.defaultCategoryId,
+  };
+
+  if (input.pass?.trim()) {
+    imap['passEnc'] = encryptField(input.pass.trim());
+  }
+
+  await IntegrationConfig.findByIdAndUpdate(
+    INTEGRATION_CONFIG_ID,
+    { $set: { imap } },
+    { upsert: true, new: true },
+  );
+
+  return getIntegrationConfigMasked();
+}
+
+export async function getImapRuntimeConfig() {
+  const doc = await getDoc();
+  const enabled = doc?.imap?.enabled ?? false;
+  const host = doc?.imap?.host;
+  const port = doc?.imap?.port ?? 993;
+  const user = doc?.imap?.user;
+  const pass = doc?.imap?.passEnc ? decryptField(doc.imap.passEnc) : undefined;
+  const folder = doc?.imap?.folder ?? 'INBOX';
+  const defaultCategoryId = doc?.imap?.defaultCategoryId;
+
+  return { enabled, host, port, user, pass, folder, defaultCategoryId };
 }

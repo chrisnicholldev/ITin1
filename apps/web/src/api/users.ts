@@ -34,3 +34,13 @@ export async function reactivateUser(id: string) {
 export async function resetPassword(id: string, password: string) {
   await apiClient.post(`/users/${id}/reset-password`, { password });
 }
+
+export async function getMe() {
+  const { data } = await apiClient.get('/users/me');
+  return data;
+}
+
+export async function updateNotificationPreferences(prefs: Record<string, boolean>) {
+  const { data } = await apiClient.patch('/users/me/notification-preferences', prefs);
+  return data;
+}

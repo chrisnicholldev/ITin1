@@ -6,6 +6,8 @@ const router: IRouter = Router();
 
 router.use(requireAuth);
 
+router.get('/me', c.getMe);
+router.patch('/me/notification-preferences', c.updateNotificationPreferences);
 router.get('/', requireAdmin, c.listUsers);
 router.post('/', requireAdmin, c.createUser);
 router.get('/:id', requireAdmin, c.getUser);

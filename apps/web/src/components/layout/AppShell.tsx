@@ -35,27 +35,27 @@ import { GlobalSearch } from '@/components/GlobalSearch';
 import { useState, useEffect } from 'react';
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, minRole: 'end_user' },
-  { href: '/tickets', label: 'Tickets', icon: Ticket, minRole: 'end_user' },
-  { href: '/assets', label: 'Assets', icon: Monitor, minRole: 'it_technician' },
-  { href: '/vault', label: 'Vault', icon: Shield, minRole: 'it_technician' },
-  { href: '/docs', label: 'Docs', icon: BookOpen, minRole: 'end_user' },
-  { href: '/network/racks', label: 'Racks', icon: Server, minRole: 'it_technician' },
-  { href: '/network/networks', label: 'Networks', icon: Globe, minRole: 'it_technician' },
-  { href: '/ssl-certs', label: 'SSL Certs', icon: Lock, minRole: 'it_technician' },
-  { href: '/licenses', label: 'Licenses', icon: KeyRound, minRole: 'it_technician' },
-  { href: '/contracts', label: 'Contracts', icon: FileText, minRole: 'it_technician' },
-  { href: '/renewals', label: 'Renewals', icon: CalendarClock, minRole: 'it_technician' },
-  { href: '/changelog', label: 'Change Log', icon: ClipboardList, minRole: 'it_technician' },
-  { href: '/checklists', label: 'Checklists', icon: ListChecks, minRole: 'it_technician' },
-  { href: '/vendors', label: 'Vendors', icon: Building2, minRole: 'it_technician' },
-  { href: '/contacts', label: 'Contacts', icon: ContactRound, minRole: 'it_technician' },
-  { href: '/admin/locations', label: 'Locations', icon: MapPin, minRole: 'it_admin' },
-  { href: '/admin/categories', label: 'Categories', icon: Tag, minRole: 'it_admin' },
-  { href: '/admin/users', label: 'Users', icon: Users, minRole: 'it_admin' },
-  { href: '/admin/integrations', label: 'Integrations', icon: Plug, minRole: 'it_admin' },
-  { href: '/admin/backup', label: 'Backup', icon: DatabaseBackup, minRole: 'it_admin' },
-  { href: '/admin/settings', label: 'Settings', icon: Settings, minRole: 'it_admin' },
+  { href: '/dashboard',          label: 'Dashboard',  icon: LayoutDashboard, minRole: 'end_user',      color: 'text-indigo-500' },
+  { href: '/tickets',            label: 'Tickets',    icon: Ticket,          minRole: 'end_user',      color: 'text-blue-500' },
+  { href: '/assets',             label: 'Assets',     icon: Monitor,         minRole: 'it_technician', color: 'text-cyan-500' },
+  { href: '/vault',              label: 'Vault',      icon: Shield,          minRole: 'it_technician', color: 'text-amber-500' },
+  { href: '/docs',               label: 'Docs',       icon: BookOpen,        minRole: 'end_user',      color: 'text-emerald-500' },
+  { href: '/network/racks',      label: 'Racks',      icon: Server,          minRole: 'it_technician', color: 'text-slate-500' },
+  { href: '/network/networks',   label: 'Networks',   icon: Globe,           minRole: 'it_technician', color: 'text-sky-500' },
+  { href: '/ssl-certs',          label: 'SSL Certs',  icon: Lock,            minRole: 'it_technician', color: 'text-orange-500' },
+  { href: '/licenses',           label: 'Licenses',   icon: KeyRound,        minRole: 'it_technician', color: 'text-violet-500' },
+  { href: '/contracts',          label: 'Contracts',  icon: FileText,        minRole: 'it_technician', color: 'text-rose-500' },
+  { href: '/renewals',           label: 'Renewals',   icon: CalendarClock,   minRole: 'it_technician', color: 'text-yellow-500' },
+  { href: '/changelog',          label: 'Change Log', icon: ClipboardList,   minRole: 'it_technician', color: 'text-teal-500' },
+  { href: '/checklists',         label: 'Checklists', icon: ListChecks,      minRole: 'it_technician', color: 'text-lime-500' },
+  { href: '/vendors',            label: 'Vendors',    icon: Building2,       minRole: 'it_technician', color: 'text-purple-500' },
+  { href: '/contacts',           label: 'Contacts',   icon: ContactRound,    minRole: 'it_technician', color: 'text-pink-500' },
+  { href: '/admin/locations',    label: 'Locations',  icon: MapPin,          minRole: 'it_admin',      color: 'text-red-400' },
+  { href: '/admin/categories',   label: 'Categories', icon: Tag,             minRole: 'it_admin',      color: 'text-orange-400' },
+  { href: '/admin/users',        label: 'Users',      icon: Users,           minRole: 'it_admin',      color: 'text-blue-400' },
+  { href: '/admin/integrations', label: 'Integrations', icon: Plug,          minRole: 'it_admin',      color: 'text-purple-400' },
+  { href: '/admin/backup',       label: 'Backup',     icon: DatabaseBackup,  minRole: 'it_admin',      color: 'text-slate-400' },
+  { href: '/admin/settings',     label: 'Settings',   icon: Settings,        minRole: 'it_admin',      color: 'text-slate-400' },
 ];
 
 const roleWeight: Record<string, number> = {
@@ -120,7 +120,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
             )}
           >
-            <item.icon className="w-4 h-4" />
+            <item.icon className={cn('w-4 h-4', !location.pathname.startsWith(item.href) && item.color)} />
             {item.label}
           </Link>
         ))}
@@ -136,6 +136,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <p className="text-xs text-muted-foreground truncate">{user?.role?.replace('_', ' ')}</p>
           </div>
         </div>
+        <Link to="/profile" onClick={() => setSidebarOpen(false)}>
+          <Button variant="ghost" size="sm" className="w-full justify-start gap-2 mb-1">
+            <Settings className="w-4 h-4" />
+            Profile &amp; Preferences
+          </Button>
+        </Link>
         <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={handleLogout}>
           <LogOut className="w-4 h-4" />
           Sign out

@@ -18,6 +18,12 @@ function toResponse(user: IUserDocument) {
     avatarUrl: user.avatarUrl,
     isActive: user.isActive,
     lastLogin: user.lastLogin,
+    notificationPreferences: user.notificationPreferences ?? {
+      onTicketCreated: true,
+      onTicketAssigned: true,
+      onStatusChanged: true,
+      onCommentAdded: true,
+    },
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
@@ -97,4 +103,17 @@ export async function resetPassword(id: string, newPassword: string) {
   }
   const passwordHash = await bcrypt.hash(newPassword, 12);
   await User.findByIdAndUpdate(id, { $set: { passwordHash } });
+}
+
+export async function updateNotificationPreferences(
+  id: string,
+  prefs: Partial<{ onTicketCreated: boolean; onTicketAssigned: boolean; onStatusChanged: boolean; onCommentAdded: boolean }>,
+) {
+  const update: Record<string, boolean> = {};
+  for (const [k, v] of Object.entries(prefs)) {
+    if (v !== undefined) update[`notificationPreferences.${k}`] = v;
+  }
+  const updated = await User.findByIdAndUpdate(id, { $set: update }, { new: true }) as IUserDocument | null;
+  if (!updated) throw new AppError(404, 'User not found');
+  return toResponse(updated);
 }

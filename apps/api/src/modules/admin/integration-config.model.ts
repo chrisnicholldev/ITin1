@@ -31,6 +31,15 @@ export interface IIntegrationConfig {
     passEnc?: string; // AES-GCM encrypted JSON
     from?: string;
   };
+  imap: {
+    enabled: boolean;
+    host?: string;
+    port?: number;
+    user?: string;
+    passEnc?: string; // AES-GCM encrypted JSON
+    folder?: string;
+    defaultCategoryId?: string;
+  };
 }
 
 export interface IIntegrationConfigDocument extends IIntegrationConfig, Document {}
@@ -67,6 +76,15 @@ const schema = new mongoose.Schema<IIntegrationConfigDocument>(
       user: String,
       passEnc: String,
       from: String,
+    },
+    imap: {
+      enabled: { type: Boolean, default: false },
+      host: String,
+      port: Number,
+      user: String,
+      passEnc: String,
+      folder: String,
+      defaultCategoryId: String,
     },
   },
   { timestamps: true },

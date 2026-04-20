@@ -78,6 +78,15 @@ export interface IntegrationConfig {
     hasPassword: boolean;
     from: string;
   };
+  imap: {
+    enabled: boolean;
+    host: string;
+    port: number;
+    user: string;
+    hasPassword: boolean;
+    folder: string;
+    defaultCategoryId: string;
+  };
 }
 
 export async function getIntegrationConfig(): Promise<IntegrationConfig> {
@@ -133,4 +142,17 @@ export async function updateSmtpConfig(payload: {
 
 export async function sendSmtpTestEmail(to: string): Promise<void> {
   await apiClient.post('/admin/integrations/config/smtp/test', { to });
+}
+
+export async function updateImapConfig(payload: {
+  enabled: boolean;
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+  folder: string;
+  defaultCategoryId: string;
+}): Promise<IntegrationConfig> {
+  const { data } = await apiClient.put('/admin/integrations/config/imap', payload);
+  return data;
 }

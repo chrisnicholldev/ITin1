@@ -8,7 +8,38 @@ A self-hosted IT management platform for small and mid-sized organisations. Buil
 
 ## Screenshots
 
-_Screenshots coming soon._
+![Dashboard](docs/screenshots/dashboard.png)
+*Dashboard — asset counts, ticket summary, and upcoming renewals at a glance*
+
+---
+
+![Assets](docs/screenshots/assets.png)
+*Asset Management — full lifecycle tracking across all device types*
+
+---
+
+![Rack Diagram](docs/screenshots/rack.png)
+*Rack Diagram — visual U-slot layout with front/back mounting*
+
+---
+
+![IPAM](docs/screenshots/ipam.png)
+*Network & IPAM — subnet tracking with IP allocation*
+
+---
+
+![Password Vault](docs/screenshots/vault.png)
+*Password Vault — AES-256-GCM encrypted credentials with folder organisation and audit log*
+
+---
+
+![Tickets](docs/screenshots/tickets.png)
+*Ticketing — status/priority workflow with comments and asset linking*
+
+---
+
+![Renewals](docs/screenshots/renewals.png)
+*Renewals Dashboard — unified view of SSL, licence, and contract expiries*
 
 ---
 

@@ -5,7 +5,7 @@ import fs from 'fs';
 import { requireAuth, requireAdmin } from '../../middleware/auth.middleware.js';
 import * as backup from './backup.controller.js';
 import { getOrgSettings, updateOrgSettings } from './settings.model.js';
-import { getIntegrationConfigMasked, updateIntuneConfig, updateMerakiConfig, updateAdConfig, updateSmtpConfig } from './integration-config.service.js';
+import { getIntegrationConfigMasked, updateIntuneConfig, updateMerakiConfig, updateAdConfig, updateSmtpConfig, updateImapConfig } from './integration-config.service.js';
 import { sendMail } from '../../lib/mailer.js';
 import { applyIntuneSchedule, applyMerakiSchedule, applyAdSchedule } from '../../jobs/queues.js';
 import { env } from '../../config/env.js';
@@ -128,6 +128,19 @@ router.post('/integrations/config/smtp/test', requireAuth, requireAdmin, async (
   } catch (err: any) {
     res.status(500).json({ error: err?.message ?? 'Failed to send test email' });
   }
+});
+
+router.put('/integrations/config/imap', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  const { enabled, host, port, user, pass, folder, defaultCategoryId } = req.body as Record<string, string>;
+  res.json(await updateImapConfig({
+    enabled: enabled === 'true' || enabled === true as any,
+    host: host || undefined,
+    port: port ? Number(port) : undefined,
+    user: user || undefined,
+    pass: pass || undefined,
+    folder: folder || undefined,
+    defaultCategoryId: defaultCategoryId || undefined,
+  }));
 });
 
 // ── Backup / restore ─────────────────────────────────────────────────────────

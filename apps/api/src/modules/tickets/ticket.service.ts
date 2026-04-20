@@ -1,5 +1,8 @@
 import mongoose from 'mongoose';
+import fs from 'fs/promises';
+import path from 'path';
 import { Ticket, type ITicketDocument } from './ticket.model.js';
+import { Category } from '../categories/category.model.js';
 import { AppError } from '../../middleware/error.middleware.js';
 import type { CreateTicketInput, UpdateTicketInput, CreateCommentInput } from '@itdesk/shared';
 import { TicketStatus } from '@itdesk/shared';
@@ -10,6 +13,7 @@ import {
   notifyStatusChanged,
   notifyCommentAdded,
 } from '../notifications/notification.service.js';
+import { recordHistory } from './ticket-history.service.js';
 
 function toResponse(ticket: ITicketDocument) {
   return {
@@ -45,6 +49,7 @@ const ListQuerySchema = z.object({
   status: z.string().optional(),
   priority: z.string().optional(),
   assignedTo: z.string().optional(),
+  assignedTeam: z.string().optional(),
   category: z.string().optional(),
   search: z.string().optional(),
   submittedBy: z.string().optional(),
@@ -61,6 +66,7 @@ export async function listTickets(rawQuery: unknown, viewerRole: string, viewerI
     filter['submittedBy'] = new mongoose.Types.ObjectId(viewerId);
   } else {
     if (query.assignedTo) filter['assignedTo'] = new mongoose.Types.ObjectId(query.assignedTo);
+    if (query.assignedTeam) filter['assignedTeam'] = { $regex: query.assignedTeam, $options: 'i' };
     if (query.submittedBy) filter['submittedBy'] = new mongoose.Types.ObjectId(query.submittedBy);
     if (query.category) filter['category'] = new mongoose.Types.ObjectId(query.category);
   }
@@ -120,10 +126,16 @@ export async function getTicket(id: string, viewerRole: string, viewerId: string
 }
 
 export async function createTicket(input: CreateTicketInput, submittedBy: string) {
+  const category = await Category.findById(input.category).select('defaultAssignee defaultPriority').lean();
+  const finalAssignedTo = category?.defaultAssignee?.toString();
+  const finalPriority = category?.defaultPriority ?? input.priority;
+
   const ticket = await Ticket.create({
     ...input,
+    priority: finalPriority,
     category: new mongoose.Types.ObjectId(input.category),
     submittedBy: new mongoose.Types.ObjectId(submittedBy),
+    ...(finalAssignedTo && { assignedTo: new mongoose.Types.ObjectId(finalAssignedTo) }),
     relatedAssets: input.relatedAssets.map((id) => new mongoose.Types.ObjectId(id)),
   }) as ITicketDocument;
 
@@ -144,10 +156,12 @@ export async function createTicket(input: CreateTicketInput, submittedBy: string
     notifyTicketAssigned(ticketInfo, { displayName: asgn.displayName, email: asgn.email }).catch(() => {});
   }
 
+  recordHistory(ticket.id, submittedBy, 'created');
+
   return response;
 }
 
-export async function updateTicket(id: string, input: UpdateTicketInput, viewerRole: string) {
+export async function updateTicket(id: string, input: UpdateTicketInput, viewerRole: string, actorId?: string) {
   const ticket = await Ticket.findById(id);
   if (!ticket) throw new AppError(404, 'Ticket not found');
 
@@ -157,6 +171,12 @@ export async function updateTicket(id: string, input: UpdateTicketInput, viewerR
       throw new AppError(403, 'Insufficient permissions');
     }
   }
+
+  // Diff changes for audit trail
+  const trackableFields = ['status', 'priority', 'assignedTo', 'assignedTeam', 'title', 'description'] as const;
+  const changes = trackableFields
+    .filter((f) => input[f] !== undefined && String(input[f]) !== String((ticket as any)[f] ?? ''))
+    .map((f) => ({ field: f, from: (ticket as any)[f], to: input[f] }));
 
   const updates: Record<string, unknown> = { ...input };
 
@@ -185,6 +205,10 @@ export async function updateTicket(id: string, input: UpdateTicketInput, viewerR
   }
   if (input.assignedTo && input.assignedTo !== ticket.assignedTo?.toString() && asgn) {
     notifyTicketAssigned(ticketInfo, { displayName: asgn.displayName, email: asgn.email }).catch(() => {});
+  }
+
+  if (actorId && changes.length > 0) {
+    recordHistory(id, actorId, 'updated', changes);
   }
 
   return response;
@@ -237,6 +261,8 @@ export async function addComment(id: string, input: CreateCommentInput, authorId
     asgn ? { displayName: asgn.displayName, email: asgn.email } : null,
   ).catch(() => {});
 
+  recordHistory(id, authorId, 'comment_added');
+
   return {
     id: comment._id.toString(),
     author: comment.author,
@@ -260,4 +286,96 @@ export async function deleteComment(ticketId: string, commentId: string, userId:
   await Ticket.findByIdAndUpdate(ticketId, {
     $pull: { comments: { _id: new mongoose.Types.ObjectId(commentId) } },
   });
+
+  recordHistory(ticketId, userId, 'comment_deleted');
+}
+
+export async function bulkUpdateTickets(
+  ids: string[],
+  updates: { status?: string; priority?: string; assignedTo?: string | null; assignedTeam?: string | null },
+  actorId: string,
+) {
+  const set: Record<string, unknown> = {};
+  if (updates.status) {
+    set['status'] = updates.status;
+    if (updates.status === TicketStatus.RESOLVED) {
+      set['resolvedAt'] = new Date();
+    } else if (updates.status === TicketStatus.CLOSED) {
+      set['closedAt'] = new Date();
+    }
+  }
+  if (updates.priority) set['priority'] = updates.priority;
+  if (updates.assignedTo !== undefined) set['assignedTo'] = updates.assignedTo ? new mongoose.Types.ObjectId(updates.assignedTo) : null;
+  if (updates.assignedTeam !== undefined) set['assignedTeam'] = updates.assignedTeam;
+
+  const result = await Ticket.updateMany(
+    { _id: { $in: ids.map((id) => new mongoose.Types.ObjectId(id)) } },
+    { $set: set },
+  );
+
+  const trackableChanges = Object.entries(updates)
+    .filter(([, v]) => v !== undefined)
+    .map(([field, to]) => ({ field, from: null, to }));
+
+  for (const id of ids) {
+    recordHistory(id, actorId, 'updated', trackableChanges);
+  }
+
+  return { updated: result.modifiedCount };
+}
+
+export async function uploadAttachment(
+  ticketId: string,
+  file: Express.Multer.File,
+  uploaderId: string,
+) {
+  const ticket = await Ticket.findById(ticketId);
+  if (!ticket) throw new AppError(404, 'Ticket not found');
+
+  const relativePath = path.relative(process.cwd(), file.path).replace(/\\/g, '/');
+
+  const attachment = {
+    filename: file.originalname,
+    storagePath: relativePath,
+    mimeType: file.mimetype,
+    size: file.size,
+    uploadedBy: new mongoose.Types.ObjectId(uploaderId),
+    uploadedAt: new Date(),
+  };
+
+  await Ticket.findByIdAndUpdate(ticketId, { $push: { attachments: attachment } });
+
+  recordHistory(ticketId, uploaderId, 'attachment_added');
+
+  return attachment;
+}
+
+export async function deleteAttachment(
+  ticketId: string,
+  attachmentId: string,
+  userId: string,
+  role: string,
+) {
+  const ticket = await Ticket.findById(ticketId);
+  if (!ticket) throw new AppError(404, 'Ticket not found');
+
+  const attachment = ticket.attachments.find((a) => a._id.toString() === attachmentId);
+  if (!attachment) throw new AppError(404, 'Attachment not found');
+
+  const isOwner = attachment.uploadedBy.toString() === userId;
+  const isAdmin = ['it_admin', 'super_admin'].includes(role);
+  const isTech = ['it_technician', 'it_admin', 'super_admin'].includes(role);
+  if (!isOwner && !isTech && !isAdmin) throw new AppError(403, 'Cannot delete this attachment');
+
+  try {
+    await fs.unlink(path.resolve(attachment.storagePath));
+  } catch {
+    // File may already be gone — still clean up the DB record
+  }
+
+  await Ticket.findByIdAndUpdate(ticketId, {
+    $pull: { attachments: { _id: new mongoose.Types.ObjectId(attachmentId) } },
+  });
+
+  recordHistory(ticketId, userId, 'attachment_deleted');
 }

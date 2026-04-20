@@ -9,6 +9,7 @@ import { runSslCertAlerts } from '../modules/ssl-certs/ssl-cert-alerts.service.j
 import { refreshAllCerts } from '../modules/ssl-certs/ssl-cert.service.js';
 import { runLicenseAlerts } from '../modules/licenses/license-alerts.service.js';
 import { runContractAlerts } from '../modules/contracts/contract-alerts.service.js';
+import { pollMailbox } from '../modules/tickets/email-ingest.service.js';
 
 // BullMQ requires its own connection config — passing the shared ioredis instance
 // causes version mismatch errors due to pnpm deduplication. Use URL-parsed options instead.
@@ -80,6 +81,15 @@ export const sslCertQueue = new Queue(SSL_CERT_QUEUE, { connection });
 
 // ── Workers ───────────────────────────────────────────────────────────────────
 
+// ── Email ingest queue ─────────────────────────────────────────────────────────
+
+const EMAIL_INGEST_QUEUE = 'email-ingest';
+const EMAIL_INGEST_JOB_KEY = 'email-ingest-scheduled';
+
+export const emailIngestQueue = new Queue(EMAIL_INGEST_QUEUE, { connection });
+
+// ── Workers ───────────────────────────────────────────────────────────────────
+
 let intuneWorker: Worker | null = null;
 let merakiWorker: Worker | null = null;
 let adWorker: Worker | null = null;
@@ -87,6 +97,7 @@ let assetAlertsWorker: Worker | null = null;
 let sslCertWorker: Worker | null = null;
 let licenseAlertsWorker: Worker | null = null;
 let contractAlertsWorker: Worker | null = null;
+let emailIngestWorker: Worker | null = null;
 
 export async function startWorkers() {
   const [intuneCfg, merakiCfg, adCfg] = await Promise.all([
@@ -280,6 +291,28 @@ export async function startWorkers() {
     { name: 'alerts', data: {} },
   );
   console.log('[contract-alerts] Worker started, schedule: daily at 08:30');
+
+  // ── Email ingest worker (every 5 min) ─────────────────────────────────────
+
+  emailIngestWorker = new Worker(
+    EMAIL_INGEST_QUEUE,
+    async () => {
+      console.log('[email-ingest] Polling mailbox');
+      await pollMailbox();
+    },
+    { connection, concurrency: 1 },
+  );
+
+  emailIngestWorker.on('failed', (job, err) => {
+    console.error(`[email-ingest] Job ${job?.id} failed:`, err.message);
+  });
+
+  await emailIngestQueue.upsertJobScheduler(
+    EMAIL_INGEST_JOB_KEY,
+    { pattern: '*/5 * * * *' },
+    { name: 'poll', data: {} },
+  );
+  console.log('[email-ingest] Worker started, schedule: every 5 minutes');
 }
 
 // ── Live schedule updates (called after config saves) ─────────────────────────
@@ -334,10 +367,12 @@ export async function stopWorkers() {
   if (sslCertWorker) { await sslCertWorker.close(); sslCertWorker = null; }
   if (licenseAlertsWorker) { await licenseAlertsWorker.close(); licenseAlertsWorker = null; }
   if (contractAlertsWorker) { await contractAlertsWorker.close(); contractAlertsWorker = null; }
+  if (emailIngestWorker) { await emailIngestWorker.close(); emailIngestWorker = null; }
   await intuneQueue.close();
   await merakiQueue.close();
   await adQueue.close();
   await assetAlertsQueue.close();
   await sslCertQueue.close();
   await licenseAlertsQueue.close();
+  await emailIngestQueue.close();
 }
