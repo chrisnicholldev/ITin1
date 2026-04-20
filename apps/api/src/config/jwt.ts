@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify, importPKCS8, importSPKI } from 'jose';
 import { env } from './env.js';
+import { getJwtPrivateKey, getJwtPublicKey } from '../lib/secrets.js';
 
 const ALG = 'RS256';
 
@@ -7,8 +8,8 @@ let privateKey: Awaited<ReturnType<typeof importPKCS8>>;
 let publicKey: Awaited<ReturnType<typeof importSPKI>>;
 
 export async function initJwt(): Promise<void> {
-  privateKey = await importPKCS8(env.JWT_PRIVATE_KEY.replace(/\\n/g, '\n'), ALG);
-  publicKey = await importSPKI(env.JWT_PUBLIC_KEY.replace(/\\n/g, '\n'), ALG);
+  privateKey = await importPKCS8(getJwtPrivateKey(), ALG);
+  publicKey = await importSPKI(getJwtPublicKey(), ALG);
 }
 
 export async function signAccessToken(payload: { sub: string; role: string }): Promise<string> {

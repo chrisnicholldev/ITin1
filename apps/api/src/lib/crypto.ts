@@ -1,12 +1,12 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
-import { env } from '../config/env.js';
+import { getVaultKey } from './secrets.js';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12; // 96-bit IV recommended for GCM
 const AUTH_TAG_LENGTH = 16;
 
 function getKey(): Buffer {
-  return Buffer.from(env.VAULT_ENCRYPTION_KEY, 'hex');
+  return Buffer.from(getVaultKey(), 'hex');
 }
 
 export function encrypt(plaintext: string): { iv: string; ciphertext: string; authTag: string } {

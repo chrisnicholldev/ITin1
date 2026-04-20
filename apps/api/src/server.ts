@@ -3,6 +3,7 @@ import { env } from './config/env.js';
 import { connectDatabase, disconnectDatabase } from './config/database.js';
 import { redis } from './config/redis.js';
 import { initJwt } from './config/jwt.js';
+import { ensureSecrets } from './lib/secrets.js';
 import { bootstrapSuperAdmin } from './modules/auth/auth.service.js';
 import { bootstrapCategories } from './modules/categories/category.service.js';
 import { startWorkers, stopWorkers } from './jobs/queues.js';
@@ -15,6 +16,7 @@ async function main() {
   // Init dependencies
   await connectDatabase();
   await redis.connect();
+  await ensureSecrets();
   await initJwt();
 
   // Bootstrap

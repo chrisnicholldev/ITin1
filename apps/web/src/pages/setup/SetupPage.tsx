@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { Shield, Building2, User, Mail, CheckCircle2, ChevronRight, ChevronLeft, Eye, EyeOff } from 'lucide-react';
+import { Shield, Building2, User, Mail, CheckCircle2, ChevronRight, ChevronLeft, Eye, EyeOff, Key, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { completeSetup } from '@/api/setup';
+import { apiClient } from '@/api/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -41,7 +42,7 @@ const INITIAL: FormState = {
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
-const STEPS = ['Welcome', 'Organisation', 'Admin Account', 'Email', 'Done'];
+const STEPS = ['Welcome', 'Organisation', 'Admin Account', 'Email', 'Backup Key', 'Done'];
 
 function StepIndicator({ current }: { current: number }) {
   return (
@@ -283,6 +284,87 @@ function StepSmtp({ form, setForm }: { form: FormState; setForm: (f: Partial<For
   );
 }
 
+function StepBackupKey({ acknowledged, onAcknowledge }: { acknowledged: boolean; onAcknowledge: (v: boolean) => void }) {
+  const [vaultKey, setVaultKey] = useState<string | null | undefined>(undefined); // undefined = loading
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    apiClient.get('/setup/vault-key').then((r) => {
+      setVaultKey(r.data.vaultKey ?? null);
+    }).catch(() => { setVaultKey(null); });
+  }, []);
+
+  function copy() {
+    if (!vaultKey) return;
+    navigator.clipboard.writeText(vaultKey).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  // Key was supplied via env — operator manages backup themselves, nothing to show
+  if (vaultKey === null) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center flex-shrink-0">
+            <Key className="w-5 h-5 text-green-700 dark:text-green-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold">Encryption key</h2>
+            <p className="text-sm text-muted-foreground">Your vault key was provided via environment variable — no action needed.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900 flex items-center justify-center flex-shrink-0">
+          <Key className="w-5 h-5 text-amber-700 dark:text-amber-400" />
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold">Back up your encryption key</h2>
+          <p className="text-sm text-muted-foreground">This key encrypts all secrets stored in the Vault.</p>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-4 text-sm text-amber-900 dark:text-amber-200 space-y-1">
+        <p className="font-medium">Keep this key safe</p>
+        <p>If you ever restore from backup, you'll need this key to decrypt your vault entries. Store it in a password manager or secure note — it won't be shown again after this screen.</p>
+      </div>
+
+      {vaultKey ? (
+        <div className="space-y-2">
+          <Label className="text-xs">Your vault encryption key</Label>
+          <div className="flex gap-2">
+            <code className="flex-1 block rounded-md border bg-muted px-3 py-2 text-xs font-mono break-all select-all">
+              {vaultKey}
+            </code>
+            <Button variant="outline" size="icon" className="flex-shrink-0 h-auto" onClick={copy}>
+              {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="h-12 rounded-md bg-muted animate-pulse" />
+      )}
+
+      <label className="flex items-start gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={acknowledged}
+          onChange={(e) => onAcknowledge(e.target.checked)}
+          className="w-4 h-4 mt-0.5 flex-shrink-0"
+        />
+        <span className="text-sm">I've copied and saved this key somewhere safe</span>
+      </label>
+    </div>
+  );
+}
+
 function StepDone({ orgName, onLogin }: { orgName: string; onLogin: () => void }) {
   return (
     <div className="text-center space-y-6">
@@ -321,6 +403,7 @@ export function SetupPage() {
   const [form, setFormRaw] = useState<FormState>(INITIAL);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [apiError, setApiError] = useState('');
+  const [keyAcknowledged, setKeyAcknowledged] = useState(false);
 
   function setForm(partial: Partial<FormState>) {
     setFormRaw((prev) => ({ ...prev, ...partial }));
@@ -345,7 +428,7 @@ export function SetupPage() {
         from: form.smtpFrom,
       } : undefined,
     }),
-    onSuccess: () => setStep(4),
+    onSuccess: () => setStep(4), // → Backup Key step
     onError: (err: any) => {
       setApiError(err?.response?.data?.message ?? 'Something went wrong. Please try again.');
     },
@@ -376,7 +459,7 @@ export function SetupPage() {
     if (!validateStep(step)) return;
     if (step === 3) {
       setApiError('');
-      submit();
+      submit(); // on success → step 4 (Backup Key)
     } else {
       setStep((s) => s + 1);
     }
@@ -397,16 +480,17 @@ export function SetupPage() {
             {step === 1 && <StepOrg form={form} setForm={setForm} errors={errors} />}
             {step === 2 && <StepAdmin form={form} setForm={setForm} errors={errors} />}
             {step === 3 && <StepSmtp form={form} setForm={setForm} />}
-            {step === 4 && <StepDone orgName={form.orgName} onLogin={() => navigate('/login')} />}
+            {step === 4 && <StepBackupKey acknowledged={keyAcknowledged} onAcknowledge={setKeyAcknowledged} />}
+            {step === 5 && <StepDone orgName={form.orgName} onLogin={() => navigate('/login')} />}
           </div>
 
           {apiError && (
             <p className="text-sm text-destructive mt-4 text-center">{apiError}</p>
           )}
 
-          {step > 0 && step < 4 && (
+          {step > 0 && step < 5 && (
             <div className="flex items-center justify-between mt-8 pt-4 border-t">
-              <Button variant="ghost" onClick={back} className="gap-1" disabled={isPending}>
+              <Button variant="ghost" onClick={back} className="gap-1" disabled={isPending || step === 4}>
                 <ChevronLeft className="w-4 h-4" /> Back
               </Button>
               <div className="flex items-center gap-3">
@@ -415,7 +499,11 @@ export function SetupPage() {
                     Skip
                   </Button>
                 )}
-                <Button onClick={next} disabled={isPending} className="gap-1">
+                <Button
+                  onClick={step === 4 ? () => setStep(5) : next}
+                  disabled={isPending || (step === 4 && !keyAcknowledged)}
+                  className="gap-1"
+                >
                   {isPending ? 'Saving...' : step === 3 ? 'Finish' : 'Continue'}
                   {!isPending && <ChevronRight className="w-4 h-4" />}
                 </Button>

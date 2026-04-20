@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from 'express';
 import { getSetupStatus, completeSetup } from './setup.service.js';
 import { AppError } from '../../middleware/error.middleware.js';
+import { getGeneratedVaultKey } from '../../lib/secrets.js';
 
 const router: IRouter = Router();
 
@@ -8,6 +9,14 @@ const router: IRouter = Router();
 router.get('/status', async (_req: Request, res: Response) => {
   const status = await getSetupStatus();
   res.json(status);
+});
+
+// Returns the auto-generated vault key only before setup is complete.
+// Returns null if the key was supplied via env (operator manages their own backup).
+router.get('/vault-key', async (_req: Request, res: Response) => {
+  const status = await getSetupStatus();
+  if (status.complete) throw new AppError(403, 'Setup is already complete');
+  res.json({ vaultKey: getGeneratedVaultKey() });
 });
 
 router.post('/complete', async (req: Request, res: Response) => {
