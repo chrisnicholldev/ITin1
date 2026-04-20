@@ -66,7 +66,7 @@ export async function listTickets(rawQuery: unknown, viewerRole: string, viewerI
     filter['submittedBy'] = new mongoose.Types.ObjectId(viewerId);
   } else {
     if (query.assignedTo) filter['assignedTo'] = new mongoose.Types.ObjectId(query.assignedTo);
-    if (query.assignedTeam) filter['assignedTeam'] = { $regex: query.assignedTeam, $options: 'i' };
+    if (query.assignedTeam) filter['assignedTeam'] = new mongoose.Types.ObjectId(query.assignedTeam);
     if (query.submittedBy) filter['submittedBy'] = new mongoose.Types.ObjectId(query.submittedBy);
     if (query.category) filter['category'] = new mongoose.Types.ObjectId(query.category);
   }
@@ -86,6 +86,7 @@ export async function listTickets(rawQuery: unknown, viewerRole: string, viewerI
       .populate('category', 'name')
       .populate('submittedBy', 'displayName email')
       .populate('assignedTo', 'displayName')
+      .populate('assignedTeam', 'name')
       .populate('relatedAssets', 'name assetTag')
       .sort({ [query.sort]: query.order === 'asc' ? 1 : -1 })
       .skip((query.page - 1) * query.limit)
@@ -104,6 +105,7 @@ export async function getTicket(id: string, viewerRole: string, viewerId: string
     .populate('category', 'name')
     .populate('submittedBy', 'displayName email')
     .populate('assignedTo', 'displayName')
+    .populate('assignedTeam', 'name')
     .populate('relatedAssets', 'name assetTag')
     .populate('comments.author', 'displayName avatarUrl') as ITicketDocument | null;
 
@@ -180,6 +182,13 @@ export async function updateTicket(id: string, input: UpdateTicketInput, viewerR
 
   const updates: Record<string, unknown> = { ...input };
 
+  // Convert assignedTeam string ID to ObjectId (or null to unset)
+  if ('assignedTeam' in updates) {
+    updates['assignedTeam'] = updates['assignedTeam']
+      ? new mongoose.Types.ObjectId(updates['assignedTeam'] as string)
+      : null;
+  }
+
   if (input.status === TicketStatus.RESOLVED && !ticket.resolvedAt) {
     updates['resolvedAt'] = new Date();
   }
@@ -191,6 +200,7 @@ export async function updateTicket(id: string, input: UpdateTicketInput, viewerR
     .populate('category', 'name')
     .populate('submittedBy', 'displayName email')
     .populate('assignedTo', 'displayName email')
+    .populate('assignedTeam', 'name')
     .populate('relatedAssets', 'name assetTag') as ITicketDocument | null;
 
   if (!updated) throw new AppError(404, 'Ticket not found');

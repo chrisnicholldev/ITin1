@@ -37,6 +37,7 @@ import { ChecklistsPage } from '@/pages/checklists/ChecklistsPage';
 import { ProfilePage } from '@/pages/profile/ProfilePage';
 import { ReportsPage } from '@/pages/tickets/ReportsPage';
 import { CannedResponsesPage } from '@/pages/admin/CannedResponsesPage';
+import { TeamsPage } from '@/pages/admin/TeamsPage';
 
 export const router = createBrowserRouter(
   [
@@ -88,6 +89,7 @@ export const router = createBrowserRouter(
         { path: 'admin/backup', element: <BackupPage /> },
         { path: 'admin/settings', element: <SettingsPage /> },
         { path: 'admin/canned-responses', element: <CannedResponsesPage /> },
+        { path: 'admin/teams', element: <TeamsPage /> },
         { path: 'tickets/reports', element: <ReportsPage /> },
         { path: 'profile', element: <ProfilePage /> },
       ],
