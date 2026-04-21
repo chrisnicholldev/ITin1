@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getAsset, updateAsset } from '@/api/assets';
+import { toggleMonitor } from '@/api/monitor';
 import { getUsers } from '@/api/users';
 import { getTickets } from '@/api/tickets';
 import { listCredentials, deleteCredential } from '@/api/vault';
@@ -124,6 +125,14 @@ export function AssetDetailPage() {
     },
   });
 
+  const { mutate: doToggleMonitor, isPending: isTogglingMonitor } = useMutation({
+    mutationFn: (monitored: boolean) => toggleMonitor(id!, monitored),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assets', id] });
+      queryClient.invalidateQueries({ queryKey: ['monitor', 'status'] });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-48">
@@ -137,6 +146,7 @@ export function AssetDetailPage() {
   const isHardware = [AssetType.WORKSTATION, AssetType.LAPTOP, AssetType.SERVER, AssetType.PRINTER, AssetType.PHONE].includes(asset.type);
   const isNetwork = [AssetType.SWITCH, AssetType.ROUTER, AssetType.FIREWALL, AssetType.ACCESS_POINT].includes(asset.type);
   const isSoftware = asset.type === AssetType.SOFTWARE_LICENSE;
+  const assetIp = asset.network?.ipAddress || asset.specs?.ipAddress || null;
 
   return (
     <div className="max-w-4xl space-y-4">
@@ -449,6 +459,43 @@ export function AssetDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-4">
+
+            {/* Monitor toggle — only shown when asset has an IP */}
+            {assetIp && !editing && (
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium">Network Monitor</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {asset.monitored ? `Monitoring ${assetIp}` : 'Ping monitoring disabled'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={asset.monitored}
+                      disabled={isTogglingMonitor}
+                      onClick={() => doToggleMonitor(!asset.monitored)}
+                      className={[
+                        'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        'disabled:opacity-50 disabled:cursor-not-allowed',
+                        asset.monitored ? 'bg-primary' : 'bg-input',
+                      ].join(' ')}
+                    >
+                      <span
+                        className={[
+                          'pointer-events-none inline-block h-5 w-5 rounded-full bg-background shadow-lg transform transition duration-200',
+                          asset.monitored ? 'translate-x-5' : 'translate-x-0',
+                        ].join(' ')}
+                      />
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader><CardTitle className="text-sm">Meta</CardTitle></CardHeader>
               <CardContent className="text-sm space-y-2">

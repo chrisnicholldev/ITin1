@@ -50,6 +50,7 @@ function toResponse(asset: IAssetDocument) {
     externalSource: asset.externalSource,
     externalId: asset.externalId,
     lastSyncedAt: asset.lastSyncedAt,
+    monitored: asset.monitored ?? false,
     customFields: asset.customFields,
     createdAt: asset.createdAt,
     updatedAt: asset.updatedAt,

@@ -46,3 +46,11 @@ export async function twoFactorConfirm(
 export async function twoFactorDisable(code: string): Promise<void> {
   await apiClient.delete('/auth/2fa', { data: { code } });
 }
+
+export async function forgotPassword(email: string): Promise<void> {
+  await apiClient.post('/auth/forgot-password', { email });
+}
+
+export async function resetPassword(token: string, password: string): Promise<void> {
+  await apiClient.post('/auth/reset-password', { token, password });
+}

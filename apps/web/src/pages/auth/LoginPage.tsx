@@ -6,10 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuthStore } from '@/stores/auth.store';
-import { login, getMe, twoFactorVerify, twoFactorSetup, twoFactorConfirm } from '@/api/auth';
+import { login, getMe, twoFactorVerify, twoFactorSetup, twoFactorConfirm, forgotPassword } from '@/api/auth';
 import { getOrgSettings } from '@/api/settings';
 
-type Stage = 'credentials' | 'verify' | 'setup' | 'recovery';
+type Stage = 'credentials' | 'verify' | 'setup' | 'recovery' | 'forgot' | 'forgot-sent';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -36,6 +36,9 @@ export function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
+  // forgot password stage
+  const [forgotEmail, setForgotEmail] = useState('');
+
   // verify/setup stage
   const [code, setCode] = useState('');
 
@@ -50,6 +53,20 @@ export function LoginPage() {
     const user = await getMe();
     setUser(user);
     navigate('/dashboard');
+  }
+
+  async function handleForgot(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      await forgotPassword(forgotEmail);
+      setStage('forgot-sent');
+    } catch {
+      setStage('forgot-sent'); // always succeed — don't leak whether email exists
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleCredentials(e: React.FormEvent) {
@@ -161,6 +178,12 @@ export function LoginPage() {
           {stage === 'recovery' && (
             <p className="text-sm text-muted-foreground">Save your recovery codes</p>
           )}
+          {stage === 'forgot' && (
+            <p className="text-sm text-muted-foreground">Reset your password</p>
+          )}
+          {stage === 'forgot-sent' && (
+            <p className="text-sm text-muted-foreground">Check your email</p>
+          )}
         </div>
 
         <Card>
@@ -194,6 +217,16 @@ export function LoginPage() {
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Sign in
                 </Button>
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+                    onClick={() => { setStage('forgot'); setError(null); }}
+                  >
+                    Forgot password?
+                  </button>
+                </div>
 
                 {azureAdEnabled && (
                   <>
@@ -318,6 +351,57 @@ export function LoginPage() {
 
                 <Button type="button" className="w-full" onClick={() => navigate('/dashboard')}>
                   I've saved my codes — continue
+                </Button>
+              </div>
+            )}
+
+            {/* ── Stage: forgot password ── */}
+            {stage === 'forgot' && (
+              <form onSubmit={handleForgot} className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Enter your email address and we'll send you a link to reset your password. Only local accounts can reset via email.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="forgot-email">Email address</Label>
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                {error && <ErrorBox message={error} />}
+                <Button type="submit" className="w-full" disabled={loading || !forgotEmail}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Send reset link
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full text-xs"
+                  onClick={() => { setStage('credentials'); setError(null); }}
+                >
+                  Back to login
+                </Button>
+              </form>
+            )}
+
+            {/* ── Stage: forgot-sent confirmation ── */}
+            {stage === 'forgot-sent' && (
+              <div className="space-y-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  If <strong>{forgotEmail}</strong> belongs to a local account, a password reset link has been sent. The link expires in 30 minutes.
+                </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full text-xs"
+                  onClick={() => { setStage('credentials'); setError(null); setForgotEmail(''); }}
+                >
+                  Back to login
                 </Button>
               </div>
             )}

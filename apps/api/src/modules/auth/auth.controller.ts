@@ -8,6 +8,8 @@ import {
   initiateTwoFactorSetup,
   confirmTwoFactorSetup,
   disableTwoFactor,
+  requestPasswordReset,
+  resetPassword,
 } from './auth.service.js';
 import { verifyTempToken } from '../../config/jwt.js';
 import { User } from '../users/user.model.js';
@@ -205,4 +207,25 @@ export async function twoFactorDisable(req: Request, res: Response): Promise<voi
 
   await disableTwoFactor(id, code);
   res.status(204).send();
+}
+
+/** POST /auth/forgot-password — request a password reset email */
+export async function forgotPassword(req: Request, res: Response): Promise<void> {
+  const { email } = req.body as { email?: string };
+  if (email) {
+    const appBaseUrl = env.CLIENT_URL || `${req.protocol}://${req.get('host')}`;
+    await requestPasswordReset(email, appBaseUrl);
+  }
+  // Always return 200 — never reveal whether the email exists
+  res.json({ message: 'If that email belongs to a local account, a reset link has been sent.' });
+}
+
+/** POST /auth/reset-password — set a new password using a reset token */
+export async function resetPasswordHandler(req: Request, res: Response): Promise<void> {
+  const { token, password } = req.body as { token?: string; password?: string };
+  if (!token || !password) throw new AppError(400, 'token and password are required');
+  if (password.length < 8) throw new AppError(400, 'Password must be at least 8 characters');
+
+  await resetPassword(token, password);
+  res.json({ message: 'Password updated successfully' });
 }

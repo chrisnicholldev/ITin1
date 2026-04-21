@@ -4,6 +4,7 @@ import { SetupGuard } from '@/components/layout/SetupGuard';
 import { SetupPage } from '@/pages/setup/SetupPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { AzureCallbackPage } from '@/pages/auth/AzureCallbackPage';
+import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { TicketsPage } from '@/pages/tickets/TicketsPage';
 import { TicketDetailPage } from '@/pages/tickets/TicketDetailPage';
@@ -52,6 +53,10 @@ export const router = createBrowserRouter(
     {
       path: '/auth/callback',
       element: <AzureCallbackPage />,
+    },
+    {
+      path: '/reset-password',
+      element: <ResetPasswordPage />,
     },
     {
       path: '/',

@@ -28,6 +28,8 @@ export interface IUser {
   twoFactorSecret?: string;
   twoFactorPendingSecret?: string;
   twoFactorRecoveryCodes?: string[];
+  passwordResetTokenHash?: string;
+  passwordResetExpires?: Date;
   notificationPreferences: INotificationPreferences;
   createdAt: Date;
   updatedAt: Date;
@@ -64,6 +66,8 @@ const userSchema = new mongoose.Schema<IUserDocument>(
     twoFactorSecret: { type: String, select: false },
     twoFactorPendingSecret: { type: String, select: false },
     twoFactorRecoveryCodes: { type: [String], select: false },
+    passwordResetTokenHash: { type: String, select: false },
+    passwordResetExpires: { type: Date, select: false },
     notificationPreferences: {
       onTicketCreated: { type: Boolean, default: true },
       onTicketAssigned: { type: Boolean, default: true },

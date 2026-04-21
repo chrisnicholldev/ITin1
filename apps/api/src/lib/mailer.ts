@@ -24,7 +24,10 @@ async function getTransport(): Promise<{ transport: Transporter; from: string } 
 
 export async function sendMail(to: string, subject: string, html: string): Promise<void> {
   const result = await getTransport();
-  if (!result) return; // SMTP not configured — silently skip
+  if (!result) {
+    console.warn(`[mailer] SMTP not configured — skipped sending "${subject}" to ${to}`);
+    return;
+  }
 
   await result.transport.sendMail({ from: result.from, to, subject, html });
 }

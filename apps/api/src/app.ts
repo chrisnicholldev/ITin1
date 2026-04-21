@@ -38,6 +38,7 @@ import checklistRoutes from './modules/checklists/checklist.routes.js';
 import setupRoutes from './modules/setup/setup.routes.js';
 import cannedResponseRoutes from './modules/tickets/canned-response.routes.js';
 import teamRoutes from './modules/teams/team.routes.js';
+import monitorRoutes from './modules/monitor/monitor.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -94,6 +95,7 @@ export function createApp(): Express {
   v1.use('/setup', setupRoutes);
   v1.use('/canned-responses', cannedResponseRoutes);
   v1.use('/teams', teamRoutes);
+  v1.use('/monitor', monitorRoutes);
 
   v1.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

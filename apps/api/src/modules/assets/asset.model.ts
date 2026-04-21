@@ -44,6 +44,7 @@ export interface IAsset {
   externalSource?: string;
   externalId?: string;
   lastSyncedAt?: Date;
+  monitored: boolean;
   customFields: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
@@ -95,6 +96,7 @@ const assetSchema = new mongoose.Schema<IAssetDocument>(
     externalSource: { type: String, enum: Object.values(ExternalSource) },
     externalId: String,
     lastSyncedAt: Date,
+    monitored: { type: Boolean, default: false },
     customFields: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
   { timestamps: true },

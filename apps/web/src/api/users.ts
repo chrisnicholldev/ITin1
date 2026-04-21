@@ -40,6 +40,11 @@ export async function getMe() {
   return data;
 }
 
+export async function updateMe(input: { displayName?: string; email?: string; phone?: string }) {
+  const { data } = await apiClient.patch('/users/me', input);
+  return data;
+}
+
 export async function updateNotificationPreferences(prefs: Record<string, boolean>) {
   const { data } = await apiClient.patch('/users/me/notification-preferences', prefs);
   return data;

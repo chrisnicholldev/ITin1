@@ -65,3 +65,16 @@ export async function getMe(req: Request, res: Response): Promise<void> {
   const user = auth(req);
   res.json(await userService.getUser(user.id));
 }
+
+const UpdateSelfSchema = z.object({
+  displayName: z.string().min(1).max(100).optional(),
+  email: z.string().email().optional(),
+  phone: z.string().max(50).optional(),
+});
+
+export async function updateMe(req: Request, res: Response): Promise<void> {
+  const user = auth(req);
+  const input = UpdateSelfSchema.parse(req.body);
+  const full = await userService.getUser(user.id);
+  res.json(await userService.updateSelf(user.id, input, full.authProvider));
+}

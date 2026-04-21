@@ -105,6 +105,26 @@ export async function resetPassword(id: string, newPassword: string) {
   await User.findByIdAndUpdate(id, { $set: { passwordHash } });
 }
 
+export async function updateSelf(
+  id: string,
+  input: { displayName?: string; phone?: string; email?: string },
+  authProvider: string,
+) {
+  const update: Record<string, unknown> = {};
+  if (input.displayName?.trim()) update['displayName'] = input.displayName.trim();
+  if (input.phone !== undefined) update['phone'] = input.phone.trim() || undefined;
+  // Only LOCAL users can change their own email — LDAP/Azure email is managed by the IdP
+  if (input.email?.trim() && authProvider === AuthProvider.LOCAL) {
+    const existing = await User.findOne({ email: input.email.toLowerCase(), _id: { $ne: id } });
+    if (existing) throw new AppError(409, 'Email already in use');
+    update['email'] = input.email.toLowerCase().trim();
+  }
+
+  const user = await User.findByIdAndUpdate(id, { $set: update }, { new: true, runValidators: true }) as IUserDocument | null;
+  if (!user) throw new AppError(404, 'User not found');
+  return toResponse(user);
+}
+
 export async function updateNotificationPreferences(
   id: string,
   prefs: Partial<{ onTicketCreated: boolean; onTicketAssigned: boolean; onStatusChanged: boolean; onCommentAdded: boolean }>,

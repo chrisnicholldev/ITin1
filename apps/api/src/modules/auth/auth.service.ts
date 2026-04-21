@@ -6,6 +6,7 @@ import { env } from '../../config/env.js';
 import { AppError } from '../../middleware/error.middleware.js';
 import { AuthProvider, UserRole } from '@itdesk/shared';
 import ldap from 'ldapjs';
+import { sendMail } from '../../lib/mailer.js';
 import {
   generateSecret,
   generateQRCodeDataUrl,
@@ -242,6 +243,63 @@ export async function bootstrapSuperAdmin(): Promise<void> {
   });
   console.log('[auth] Default admin created: admin@itdesk.local / changeme123!');
   console.log('[auth] IMPORTANT: Change this password immediately!');
+}
+
+// ── Password reset ────────────────────────────────────────────────────────────
+
+const RESET_TOKEN_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
+
+export async function requestPasswordReset(email: string, appBaseUrl: string): Promise<void> {
+  const user = await User.findOne({
+    email: email.toLowerCase(),
+    authProvider: AuthProvider.LOCAL,
+    isActive: true,
+  });
+
+  // Always resolve successfully — never reveal whether an email exists
+  if (!user) return;
+
+  const token = randomBytes(32).toString('hex');
+  const tokenHash = createHash('sha256').update(token).digest('hex');
+
+  await User.findByIdAndUpdate(user.id, {
+    $set: {
+      passwordResetTokenHash: tokenHash,
+      passwordResetExpires: new Date(Date.now() + RESET_TOKEN_EXPIRY_MS),
+    },
+  });
+
+  const resetUrl = `${appBaseUrl}/reset-password?token=${token}`;
+
+  await sendMail(
+    user.email,
+    'Reset your ITin1 password',
+    `<p>Hi ${user.displayName},</p>
+<p>A password reset was requested for your account. Click the link below to set a new password. This link expires in 30 minutes.</p>
+<p><a href="${resetUrl}">${resetUrl}</a></p>
+<p>If you did not request this, you can safely ignore this email.</p>`,
+  );
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  const tokenHash = createHash('sha256').update(token).digest('hex');
+
+  const user = await User.findOne({
+    passwordResetTokenHash: tokenHash,
+    authProvider: AuthProvider.LOCAL,
+    isActive: true,
+  }).select('+passwordResetTokenHash +passwordResetExpires');
+
+  if (!user || !user.passwordResetExpires || user.passwordResetExpires < new Date()) {
+    throw new AppError(400, 'Reset link is invalid or has expired');
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+
+  await User.findByIdAndUpdate(user.id, {
+    $set: { passwordHash },
+    $unset: { passwordResetTokenHash: 1, passwordResetExpires: 1, refreshTokenHash: 1 },
+  });
 }
 
 // ── LDAP helpers ─────────────────────────────────────────────────────────────

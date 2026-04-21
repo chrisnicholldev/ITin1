@@ -5,6 +5,7 @@ import { runMerakiSync } from '../modules/integrations/meraki/meraki.service.js'
 import { runAdSync } from '../modules/integrations/ad/ad.service.js';
 import { getIntuneRuntimeConfig, getMerakiRuntimeConfig, getAdRuntimeConfig } from '../modules/admin/integration-config.service.js';
 import { runAssetAlerts } from '../modules/assets/asset-alerts.service.js';
+import { runPingChecks } from '../modules/monitor/monitor.service.js';
 import { runSslCertAlerts } from '../modules/ssl-certs/ssl-cert-alerts.service.js';
 import { refreshAllCerts } from '../modules/ssl-certs/ssl-cert.service.js';
 import { runLicenseAlerts } from '../modules/licenses/license-alerts.service.js';
@@ -88,6 +89,13 @@ const EMAIL_INGEST_JOB_KEY = 'email-ingest-scheduled';
 
 export const emailIngestQueue = new Queue(EMAIL_INGEST_QUEUE, { connection });
 
+// ── Ping monitor queue ─────────────────────────────────────────────────────────
+
+const PING_QUEUE = 'ping-monitor';
+const PING_JOB_KEY = 'ping-monitor-scheduled';
+
+export const pingQueue = new Queue(PING_QUEUE, { connection });
+
 // ── Workers ───────────────────────────────────────────────────────────────────
 
 let intuneWorker: Worker | null = null;
@@ -97,6 +105,7 @@ let assetAlertsWorker: Worker | null = null;
 let sslCertWorker: Worker | null = null;
 let licenseAlertsWorker: Worker | null = null;
 let contractAlertsWorker: Worker | null = null;
+let pingWorker: Worker | null = null;
 let emailIngestWorker: Worker | null = null;
 
 export async function startWorkers() {
@@ -292,6 +301,30 @@ export async function startWorkers() {
   );
   console.log('[contract-alerts] Worker started, schedule: daily at 08:30');
 
+  // ── Ping monitor worker (every 60s) ───────────────────────────────────────
+
+  pingWorker = new Worker(
+    PING_QUEUE,
+    async () => {
+      const result = await runPingChecks();
+      if (result.checked > 0) {
+        console.log(`[ping-monitor] Checked ${result.checked} assets — up: ${result.up}, down: ${result.down}`);
+      }
+    },
+    { connection, concurrency: 1 },
+  );
+
+  pingWorker.on('failed', (job, err) => {
+    console.error(`[ping-monitor] Job ${job?.id} failed:`, err.message);
+  });
+
+  await pingQueue.upsertJobScheduler(
+    PING_JOB_KEY,
+    { every: 60 * 1000 },
+    { name: 'ping', data: {} },
+  );
+  console.log('[ping-monitor] Worker started, schedule: every 60s');
+
   // ── Email ingest worker (every 5 min) ─────────────────────────────────────
 
   emailIngestWorker = new Worker(
@@ -367,6 +400,7 @@ export async function stopWorkers() {
   if (sslCertWorker) { await sslCertWorker.close(); sslCertWorker = null; }
   if (licenseAlertsWorker) { await licenseAlertsWorker.close(); licenseAlertsWorker = null; }
   if (contractAlertsWorker) { await contractAlertsWorker.close(); contractAlertsWorker = null; }
+  if (pingWorker) { await pingWorker.close(); pingWorker = null; }
   if (emailIngestWorker) { await emailIngestWorker.close(); emailIngestWorker = null; }
   await intuneQueue.close();
   await merakiQueue.close();
@@ -375,4 +409,5 @@ export async function stopWorkers() {
   await sslCertQueue.close();
   await licenseAlertsQueue.close();
   await emailIngestQueue.close();
+  await pingQueue.close();
 }

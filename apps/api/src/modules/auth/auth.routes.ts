@@ -11,10 +11,21 @@ import {
   twoFactorDisable,
   azureRedirect,
   azureCallback,
+  forgotPassword,
+  resetPasswordHandler,
 } from './auth.controller.js';
 import { requireAuth } from '../../middleware/auth.middleware.js';
 
 const router: IRouter = Router();
+
+// Max 5 password reset requests per IP per 15 minutes
+const resetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests — please try again in 15 minutes' },
+});
 
 // Max 10 login attempts per IP per 15 minutes
 const loginLimiter = rateLimit({
@@ -38,6 +49,8 @@ router.get('/azure', azureRedirect);
 router.get('/azure/callback', azureCallback);
 
 router.post('/login', loginLimiter, login);
+router.post('/forgot-password', resetLimiter, forgotPassword);
+router.post('/reset-password', resetLimiter, resetPasswordHandler);
 router.post('/refresh', refresh);
 router.post('/logout', requireAuth, logoutHandler);
 router.get('/me', requireAuth, me);

@@ -73,6 +73,16 @@ step "Restarting services"
 docker compose -f "$COMPOSE_FILE" up -d
 info "Services restarted"
 
+# ── Reload nginx ──────────────────────────────────────────────────────────────
+step "Reloading nginx"
+
+if command -v nginx &>/dev/null && systemctl is-active --quiet nginx 2>/dev/null; then
+  sudo systemctl reload nginx
+  info "nginx reloaded"
+else
+  warn "nginx not found or not active — skipping"
+fi
+
 # ── Health check ───────────────────────────────────────────────────────────────
 if [ -n "$HEALTH_URL" ]; then
   step "Waiting for app to respond at $HEALTH_URL"

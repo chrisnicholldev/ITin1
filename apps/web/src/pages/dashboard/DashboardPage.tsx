@@ -4,7 +4,7 @@ import {
   AlertTriangle, ArrowRight, Cpu, Printer,
   Router, Wifi, HardDrive, Package, KeyRound,
   CheckCircle2, XCircle, Clock, ShieldAlert,
-  Activity,
+  Activity, Radio,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import { UserRole } from '@itdesk/shared';
 import { getTickets } from '@/api/tickets';
 import { getAssets } from '@/api/assets';
 import { getDashboardStats } from '@/api/dashboard';
+import { getMonitorStatus, type MonitorAsset } from '@/api/monitor';
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60_000);
@@ -134,6 +135,96 @@ function IntegrationStatusCard({
   );
 }
 
+// ── Network monitor widget ────────────────────────────────────────────────────
+
+function MonitorStatusBadge({ status }: { status: MonitorAsset['status'] }) {
+  if (status === 'up') {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+        </span>
+        Up
+      </span>
+    );
+  }
+  if (status === 'down') {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
+        <XCircle className="h-3.5 w-3.5" />
+        Down
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <Clock className="h-3.5 w-3.5" />
+      Pending
+    </span>
+  );
+}
+
+function NetworkMonitorWidget({ assets }: { assets: MonitorAsset[] }) {
+  const downCount = assets.filter((a) => a.status === 'down').length;
+  const upCount = assets.filter((a) => a.status === 'up').length;
+
+  const sorted = [...assets].sort((a, b) => {
+    const order = { down: 0, unknown: 1, up: 2 };
+    return (order[a.status] ?? 1) - (order[b.status] ?? 1);
+  });
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-muted-foreground">Network Monitor</p>
+          {downCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+              {downCount} down
+            </span>
+          )}
+        </div>
+        <span className="text-xs text-muted-foreground">{upCount}/{assets.length} up</span>
+      </div>
+      <Card>
+        <CardContent className="p-0">
+          <div className="divide-y">
+            {sorted.map((asset) => (
+              <Link
+                key={asset.assetId}
+                to={`/assets/${asset.assetId}`}
+                className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Radio className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{asset.name}</p>
+                    <p className="text-xs text-muted-foreground">{asset.ip ?? 'No IP'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 shrink-0 ml-4">
+                  {asset.uptime24h !== null && (
+                    <span className="text-xs text-muted-foreground hidden sm:block tabular-nums">
+                      {asset.uptime24h}% 24h
+                    </span>
+                  )}
+                  {asset.lastLatencyMs !== null && asset.status === 'up' && (
+                    <span className="text-xs text-muted-foreground hidden sm:block tabular-nums w-14 text-right">
+                      {asset.lastLatencyMs}ms
+                    </span>
+                  )}
+                  <MonitorStatusBadge status={asset.status} />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function DashboardPage() {
@@ -158,6 +249,14 @@ export function DashboardPage() {
     queryFn: () => getAssets({ limit: 5, sort: 'createdAt', order: 'desc' }),
     enabled: isTech,
     staleTime: 30_000,
+  });
+
+  const { data: monitorData } = useQuery({
+    queryKey: ['monitor', 'status'],
+    queryFn: getMonitorStatus,
+    enabled: isTech,
+    refetchInterval: 60_000,
+    staleTime: 55_000,
   });
 
   const openTickets = stats?.tickets.open ?? 0;
@@ -365,6 +464,11 @@ export function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Network monitor */}
+      {isTech && monitorData && monitorData.length > 0 && (
+        <NetworkMonitorWidget assets={monitorData} />
       )}
 
       {/* Admin: integration sync status */}
