@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getTickets, bulkUpdateTickets } from '@/api/tickets';
+import { getTeams } from '@/api/teams';
 import { TicketStatus, TicketPriority, UserRole } from '@itdesk/shared';
 import { useAuthStore } from '@/stores/auth.store';
 
@@ -103,6 +104,13 @@ export function TicketsPage() {
       setBulkPriority('');
     },
   });
+
+  const { data: teamsData } = useQuery({
+    queryKey: ['teams'],
+    queryFn: getTeams,
+    enabled: isTech,
+  });
+  const teams: Array<{ id: string; name: string }> = teamsData ?? [];
 
   const { data, isLoading } = useQuery({
     queryKey: ['tickets', { search, status, priority, assignedTeam, page }],
@@ -212,12 +220,17 @@ export function TicketsPage() {
             ))}
           </SelectContent>
         </Select>
-        <Input
-          placeholder="Team..."
-          className="w-36"
-          value={assignedTeam}
-          onChange={(e) => { setAssignedTeam(e.target.value); setPage(1); }}
-        />
+        {isTech && (
+          <Select value={assignedTeam || 'all'} onValueChange={(v) => { setAssignedTeam(v === 'all' ? '' : v); setPage(1); }}>
+            <SelectTrigger className="w-36"><SelectValue placeholder="Team" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All teams</SelectItem>
+              {teams.map((t) => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Bulk toolbar */}

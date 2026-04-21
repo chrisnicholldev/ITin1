@@ -6,9 +6,9 @@ services:
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-root}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD required}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-itdesk_root_default}
       MONGO_INITDB_DATABASE: itdesk
-      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?MONGO_APP_PASSWORD required}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-itdesk_app_default}
     volumes:
       - mongo_data:/data/db
       - ./mongo/init-mongo.js:/docker-entrypoint-initdb.d/01-init.js:ro
@@ -32,11 +32,11 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      CLIENT_URL: ${CLIENT_URL:-http://localhost}
-      MONGODB_URI: mongodb://itdesk_user:${MONGO_APP_PASSWORD}@mongo:27017/itdesk
+      CLIENT_URL: ${CLIENT_URL:-}
+      MONGODB_URI: mongodb://itdesk_user:${MONGO_APP_PASSWORD:-itdesk_app_default}@mongo:27017/itdesk
       REDIS_URL: redis://redis:6379
-      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:?JWT_PRIVATE_KEY required}
-      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:?JWT_PUBLIC_KEY required}
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:-}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
       JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       LDAP_ENABLED: ${LDAP_ENABLED:-false}
@@ -63,12 +63,13 @@ services:
       MERAKI_API_KEY: ${MERAKI_API_KEY:-}
       MERAKI_ORG_ID: ${MERAKI_ORG_ID:-}
       MERAKI_SYNC_SCHEDULE: ${MERAKI_SYNC_SCHEDULE:-}
-      VAULT_ENCRYPTION_KEY: ${VAULT_ENCRYPTION_KEY:?VAULT_ENCRYPTION_KEY required}
+      VAULT_ENCRYPTION_KEY: ${VAULT_ENCRYPTION_KEY:-}
       COOKIE_SECURE: ${COOKIE_SECURE:-}
       UPLOAD_DIR: /app/uploads
       MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-25}
     volumes:
       - uploads:/app/uploads
+      - app_data:/app/data
     depends_on:
       - mongo
       - redis
@@ -103,6 +104,7 @@ volumes:
   mongo_data:
   redis_data:
   uploads:
+  app_data:
 
 networks:
   internal:

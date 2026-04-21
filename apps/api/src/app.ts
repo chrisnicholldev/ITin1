@@ -37,6 +37,7 @@ import changelogRoutes from './modules/changelog/changelog.routes.js';
 import checklistRoutes from './modules/checklists/checklist.routes.js';
 import setupRoutes from './modules/setup/setup.routes.js';
 import cannedResponseRoutes from './modules/tickets/canned-response.routes.js';
+import teamRoutes from './modules/teams/team.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -47,7 +48,7 @@ export function createApp(): Express {
   app.use(helmet());
   app.use(
     cors({
-      origin: env.CLIENT_URL,
+      origin: env.CLIENT_URL || true,
       credentials: true,
     }),
   );
@@ -92,6 +93,7 @@ export function createApp(): Express {
   v1.use('/checklists', checklistRoutes);
   v1.use('/setup', setupRoutes);
   v1.use('/canned-responses', cannedResponseRoutes);
+  v1.use('/teams', teamRoutes);
 
   v1.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

@@ -52,6 +52,7 @@ const navItems = [
   { href: '/contacts',           label: 'Contacts',   icon: ContactRound,    minRole: 'it_technician', color: 'text-pink-500' },
   { href: '/admin/locations',    label: 'Locations',  icon: MapPin,          minRole: 'it_admin',      color: 'text-red-400' },
   { href: '/admin/categories',   label: 'Categories', icon: Tag,             minRole: 'it_admin',      color: 'text-orange-400' },
+  { href: '/admin/teams',        label: 'Teams',      icon: Users,           minRole: 'it_admin',      color: 'text-indigo-400' },
   { href: '/admin/users',        label: 'Users',      icon: Users,           minRole: 'it_admin',      color: 'text-blue-400' },
   { href: '/admin/integrations', label: 'Integrations', icon: Plug,          minRole: 'it_admin',      color: 'text-purple-400' },
   { href: '/admin/backup',       label: 'Backup',     icon: DatabaseBackup,  minRole: 'it_admin',      color: 'text-slate-400' },

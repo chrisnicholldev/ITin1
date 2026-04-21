@@ -30,7 +30,7 @@ export interface ITicket {
   subcategory?: string;
   submittedBy: mongoose.Types.ObjectId;
   assignedTo?: mongoose.Types.ObjectId;
-  assignedTeam?: string;
+  assignedTeam?: mongoose.Types.ObjectId;
   relatedAssets: mongoose.Types.ObjectId[];
   comments: IComment[];
   attachments: IAttachment[];
@@ -90,7 +90,7 @@ const ticketSchema = new mongoose.Schema<ITicketDocument>(
     subcategory: String,
     submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    assignedTeam: String,
+    assignedTeam: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' },
     relatedAssets: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Asset' }],
     comments: [commentSchema],
     attachments: [attachmentSchema],

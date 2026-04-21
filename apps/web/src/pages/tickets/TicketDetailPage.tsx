@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getTicket, updateTicket, addComment, getTicketHistory, uploadAttachment, deleteAttachment, getCannedResponses } from '@/api/tickets';
 import { getAssets } from '@/api/assets';
+import { getTeams } from '@/api/teams';
 import { useAuthStore } from '@/stores/auth.store';
 import { TicketStatus, TicketPriority, UserRole } from '@itdesk/shared';
 
@@ -92,6 +93,13 @@ export function TicketDetailPage() {
     queryFn: () => getTicketHistory(id!),
     enabled: !!id,
   });
+
+  const { data: teamsData } = useQuery({
+    queryKey: ['teams'],
+    queryFn: getTeams,
+    enabled: isTech,
+  });
+  const teams: Array<{ id: string; name: string }> = teamsData ?? [];
 
   const updateMutation = useMutation({
     mutationFn: (data: Parameters<typeof updateTicket>[1]) => updateTicket(id!, data),
@@ -395,16 +403,18 @@ export function TicketDetailPage() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Assigned Team</p>
-                  <Input
-                    className="h-8 text-xs"
-                    defaultValue={ticket.assignedTeam ?? ''}
-                    onBlur={(e) => {
-                      const val = e.target.value.trim();
-                      if (val !== (ticket.assignedTeam ?? '')) {
-                        updateMutation.mutate({ assignedTeam: val || null });
-                      }
-                    }}
-                  />
+                  <Select
+                    value={(ticket.assignedTeam as any)?.id ?? ticket.assignedTeam ?? 'none'}
+                    onValueChange={(v) => updateMutation.mutate({ assignedTeam: v === 'none' ? null : v })}
+                  >
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="No team" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No team</SelectItem>
+                      {teams.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>
@@ -428,7 +438,7 @@ export function TicketDetailPage() {
               {ticket.assignedTeam && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Team</span>
-                  <span>{ticket.assignedTeam}</span>
+                  <span>{(ticket.assignedTeam as any)?.name ?? ticket.assignedTeam}</span>
                 </div>
               )}
               <div className="flex justify-between">

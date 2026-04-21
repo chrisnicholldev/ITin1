@@ -3,14 +3,14 @@ import { z } from 'zod';
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(3001),
-  CLIENT_URL: z.string().url().default('http://localhost:5173'),
+  CLIENT_URL: z.string().default(''),
 
   MONGODB_URI: z.string().min(1),
 
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
-  JWT_PRIVATE_KEY: z.string().min(1),
-  JWT_PUBLIC_KEY: z.string().min(1),
+  JWT_PRIVATE_KEY: z.string().default(''),
+  JWT_PUBLIC_KEY: z.string().default(''),
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
 
@@ -31,7 +31,7 @@ const EnvSchema = z.object({
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().optional(),
 
-  VAULT_ENCRYPTION_KEY: z.string().length(64, 'VAULT_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)'),
+  VAULT_ENCRYPTION_KEY: z.string().default(''),
 
   INTUNE_ENABLED: z.coerce.boolean().default(false),
   INTUNE_TENANT_ID: z.string().optional(),
