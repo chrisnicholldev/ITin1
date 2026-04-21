@@ -14,6 +14,12 @@ interface SecretsFile {
 let _loaded: SecretsFile | null = null;
 
 export async function ensureSecrets(): Promise<void> {
+  // If all three secrets are supplied via env, no file needed
+  if (env.JWT_PRIVATE_KEY && env.JWT_PUBLIC_KEY && env.VAULT_ENCRYPTION_KEY) {
+    console.log('[secrets] All secrets supplied via env — skipping file');
+    return;
+  }
+
   let existing: Partial<SecretsFile> = {};
 
   if (existsSync(SECRETS_FILE)) {
@@ -26,7 +32,7 @@ export async function ensureSecrets(): Promise<void> {
 
   let changed = false;
 
-  if (!existing.jwtPrivateKey || !existing.jwtPublicKey) {
+  if (!env.JWT_PRIVATE_KEY && (!existing.jwtPrivateKey || !existing.jwtPublicKey)) {
     console.log('[secrets] Generating RSA-2048 key pair…');
     const { privateKey, publicKey } = generateKeyPairSync('rsa', {
       modulusLength: 2048,
@@ -38,7 +44,7 @@ export async function ensureSecrets(): Promise<void> {
     changed = true;
   }
 
-  if (!existing.vaultEncryptionKey) {
+  if (!env.VAULT_ENCRYPTION_KEY && !existing.vaultEncryptionKey) {
     existing.vaultEncryptionKey = randomBytes(32).toString('hex');
     console.log('[secrets] Generated vault encryption key');
     changed = true;
