@@ -1,7 +1,7 @@
 #!/bin/bash
 # ITin1 update script
 # Usage: bash update.sh
-# Pulls latest code, rebuilds Docker images, and restarts services.
+# Pulls latest code and images, then restarts services.
 
 set -euo pipefail
 
@@ -61,11 +61,11 @@ else
   git log --oneline "$BEFORE".."$AFTER"
 fi
 
-# ── Rebuild images ─────────────────────────────────────────────────────────────
-step "Building Docker images"
+# ── Pull latest images ─────────────────────────────────────────────────────────
+step "Pulling latest images"
 
-docker compose -f "$COMPOSE_FILE" build
-info "Build complete"
+docker compose -f "$COMPOSE_FILE" pull
+info "Images up to date"
 
 # ── Restart services ───────────────────────────────────────────────────────────
 step "Restarting services"

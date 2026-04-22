@@ -222,8 +222,9 @@ fi
 header "Starting ITin1"
 
 cd "$INSTALL_DIR/infra"
-info "Building and starting containers (this may take a few minutes on first run)..."
-docker compose up -d --build --quiet-pull
+info "Pulling images and starting containers..."
+docker compose pull --quiet
+docker compose up -d
 
 # Wait for API to become ready (up to 60s)
 info "Waiting for API to be ready..."
