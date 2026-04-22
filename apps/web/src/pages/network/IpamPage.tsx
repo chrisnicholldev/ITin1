@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Pencil, Trash2, ScanLine, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, ScanLine, Check, Wifi, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { getIpam, assignIp, updateIpAssignment, releaseIp, scanSubnet, type IpAssignment, type GridEntry, type ScanResult } from '@/api/ipam';
+import { getIpam, assignIp, updateIpAssignment, releaseIp, scanSubnet, toggleIpMonitor, type IpAssignment, type GridEntry, type ScanResult } from '@/api/ipam';
 import { getAssets } from '@/api/assets';
 import { useAuthStore } from '@/stores/auth.store';
 import { UserRole } from '@itdesk/shared';
@@ -196,11 +196,13 @@ function ScanPanel({
   results, scanned, found, onAssign, onClose,
 }: {
   results: ScanResult[]; scanned: number; found: number;
-  onAssign: (selected: ScanResult[]) => void; onClose: () => void;
+  onAssign: (selected: ScanResult[], monitor: boolean) => void; onClose: () => void;
 }) {
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(
     new Set(results.filter((r) => !r.alreadyAssigned).map((r) => r.ip)),
   );
+  const [monitorOnAssign, setMonitorOnAssign] = useState(false);
 
   function toggle(ip: string) {
     setSelected((prev) => { const n = new Set(prev); n.has(ip) ? n.delete(ip) : n.add(ip); return n; });
@@ -234,6 +236,7 @@ function ScanPanel({
                   <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs w-36">IP</th>
                   <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs">Hostname</th>
                   <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs w-32">Status</th>
+                  <th className="w-8 px-3 py-2" />
                 </tr>
               </thead>
               <tbody>
@@ -253,15 +256,37 @@ function ScanPanel({
                         : <span className="text-green-600 font-medium">New</span>
                       }
                     </td>
+                    <td className="px-2 py-2 text-center">
+                      <Button
+                        variant="ghost" size="icon" className="h-6 w-6"
+                        title="Create asset from this host"
+                        onClick={() => {
+                          const params = new URLSearchParams({ ip: r.ip });
+                          if (r.hostname) params.set('name', r.hostname);
+                          navigate(`/assets/new?${params.toString()}`);
+                        }}
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             {toAssign.length > 0 && (
-              <div className="px-4 py-3 border-t">
-                <Button size="sm" onClick={() => onAssign(toAssign)}>
+              <div className="px-4 py-3 border-t flex items-center gap-4">
+                <Button size="sm" onClick={() => onAssign(toAssign, monitorOnAssign)}>
                   <Plus className="h-3.5 w-3.5" /> Assign {toAssign.length} selected
                 </Button>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={monitorOnAssign}
+                    onChange={(e) => setMonitorOnAssign(e.target.checked)}
+                    className="cursor-pointer"
+                  />
+                  Monitor assigned IPs
+                </label>
               </div>
             )}
           </>
@@ -300,10 +325,15 @@ export function IpamPage() {
     onSuccess: (res) => setScanResults(res),
   });
 
+  const { mutate: doToggleMonitor } = useMutation({
+    mutationFn: ({ id, monitored }: { id: string; monitored: boolean }) => toggleIpMonitor(id, monitored),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ipam', networkId] }),
+  });
+
   const { mutate: bulkAssign } = useMutation({
-    mutationFn: (selected: ScanResult[]) =>
+    mutationFn: ({ selected, monitor }: { selected: ScanResult[]; monitor: boolean }) =>
       Promise.all(selected.map((r) =>
-        assignIp(networkId!, { address: r.ip, label: r.hostname ?? r.ip, type: 'static' }),
+        assignIp(networkId!, { address: r.ip, label: r.hostname ?? r.ip, type: 'static', monitored: monitor }),
       )),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ipam', networkId] });
@@ -406,7 +436,7 @@ export function IpamPage() {
           results={scanResults.results}
           scanned={scanResults.scanned}
           found={scanResults.found}
-          onAssign={(selected) => bulkAssign(selected)}
+          onAssign={(selected, monitor) => bulkAssign({ selected, monitor })}
           onClose={() => setScanResults(null)}
         />
       )}
@@ -427,6 +457,7 @@ export function IpamPage() {
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground text-xs">Label / Hostname</th>
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground text-xs w-24">Type</th>
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground text-xs">Asset</th>
+                  <th className="text-center px-4 py-2 font-medium text-muted-foreground text-xs w-20">Monitor</th>
                   {isAdmin && <th className="w-20" />}
                 </tr>
               </thead>
@@ -445,6 +476,15 @@ export function IpamPage() {
                       {a.asset
                         ? <Link to={`/assets/${a.asset.id}`} className="hover:underline font-medium text-foreground">{a.asset.assetTag} — {a.asset.name}</Link>
                         : '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-center">
+                      <Button
+                        variant="ghost" size="icon" className="h-7 w-7"
+                        title={a.monitored ? 'Monitoring enabled — click to disable' : 'Click to enable monitoring'}
+                        onClick={() => doToggleMonitor({ id: a.id, monitored: !a.monitored })}
+                      >
+                        <Wifi className={`h-3.5 w-3.5 ${a.monitored ? 'text-green-500' : 'text-muted-foreground/40'}`} />
+                      </Button>
                     </td>
                     {isAdmin && (
                       <td className="px-2 py-2.5">

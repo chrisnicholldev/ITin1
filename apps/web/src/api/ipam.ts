@@ -8,6 +8,7 @@ export interface IpAssignment {
   type: 'static' | 'reserved' | 'dhcp';
   asset?: { id: string; name: string; assetTag: string };
   notes?: string;
+  monitored: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,10 +51,14 @@ export async function getIpam(networkId: string): Promise<IpamData> {
 
 export async function assignIp(
   networkId: string,
-  input: { address: string; label: string; type?: string; assetId?: string; notes?: string },
+  input: { address: string; label: string; type?: string; assetId?: string; notes?: string; monitored?: boolean },
 ): Promise<IpAssignment> {
   const { data } = await apiClient.post(`/ipam/${networkId}`, input);
   return data;
+}
+
+export async function toggleIpMonitor(id: string, monitored: boolean): Promise<void> {
+  await apiClient.patch(`/monitor/ipam/${id}`, { monitored });
 }
 
 export async function updateIpAssignment(

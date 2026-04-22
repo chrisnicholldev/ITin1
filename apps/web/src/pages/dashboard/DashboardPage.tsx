@@ -14,7 +14,7 @@ import { UserRole } from '@itdesk/shared';
 import { getTickets } from '@/api/tickets';
 import { getAssets } from '@/api/assets';
 import { getDashboardStats } from '@/api/dashboard';
-import { getMonitorStatus, type MonitorAsset } from '@/api/monitor';
+import { getMonitorStatus, type MonitorEntry } from '@/api/monitor';
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60_000);
@@ -137,7 +137,7 @@ function IntegrationStatusCard({
 
 // ── Network monitor widget ────────────────────────────────────────────────────
 
-function MonitorStatusBadge({ status }: { status: MonitorAsset['status'] }) {
+function MonitorStatusBadge({ status }: { status: MonitorEntry['status'] }) {
   if (status === 'up') {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400">
@@ -165,11 +165,11 @@ function MonitorStatusBadge({ status }: { status: MonitorAsset['status'] }) {
   );
 }
 
-function NetworkMonitorWidget({ assets }: { assets: MonitorAsset[] }) {
-  const downCount = assets.filter((a) => a.status === 'down').length;
-  const upCount = assets.filter((a) => a.status === 'up').length;
+function NetworkMonitorWidget({ entries }: { entries: MonitorEntry[] }) {
+  const downCount = entries.filter((e) => e.status === 'down').length;
+  const upCount = entries.filter((e) => e.status === 'up').length;
 
-  const sorted = [...assets].sort((a, b) => {
+  const sorted = [...entries].sort((a, b) => {
     const order = { down: 0, unknown: 1, up: 2 };
     return (order[a.status] ?? 1) - (order[b.status] ?? 1);
   });
@@ -185,39 +185,52 @@ function NetworkMonitorWidget({ assets }: { assets: MonitorAsset[] }) {
             </span>
           )}
         </div>
-        <span className="text-xs text-muted-foreground">{upCount}/{assets.length} up</span>
+        <span className="text-xs text-muted-foreground">{upCount}/{entries.length} up</span>
       </div>
       <Card>
         <CardContent className="p-0">
           <div className="divide-y">
-            {sorted.map((asset) => (
-              <Link
-                key={asset.assetId}
-                to={`/assets/${asset.assetId}`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <Radio className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{asset.name}</p>
-                    <p className="text-xs text-muted-foreground">{asset.ip ?? 'No IP'}</p>
+            {sorted.map((entry) => {
+              const to = entry.sourceType === 'asset'
+                ? `/assets/${entry.sourceId}`
+                : `/network/ipam/${entry.networkId}`;
+              const subtitle = entry.sourceType === 'ipam' && entry.networkName
+                ? `${entry.ip ?? 'No IP'} · ${entry.networkName}`
+                : (entry.ip ?? 'No IP');
+              return (
+                <Link
+                  key={`${entry.sourceType}:${entry.sourceId}`}
+                  to={to}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Radio className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-medium truncate">{entry.name}</p>
+                        {entry.sourceType === 'ipam' && (
+                          <span className="text-[10px] font-medium bg-muted text-muted-foreground rounded px-1 py-0.5 shrink-0">IPAM</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{subtitle}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-4 shrink-0 ml-4">
-                  {asset.uptime24h !== null && (
-                    <span className="text-xs text-muted-foreground hidden sm:block tabular-nums">
-                      {asset.uptime24h}% 24h
-                    </span>
-                  )}
-                  {asset.lastLatencyMs !== null && asset.status === 'up' && (
-                    <span className="text-xs text-muted-foreground hidden sm:block tabular-nums w-14 text-right">
-                      {asset.lastLatencyMs}ms
-                    </span>
-                  )}
-                  <MonitorStatusBadge status={asset.status} />
-                </div>
-              </Link>
-            ))}
+                  <div className="flex items-center gap-4 shrink-0 ml-4">
+                    {entry.uptime24h !== null && (
+                      <span className="text-xs text-muted-foreground hidden sm:block tabular-nums">
+                        {entry.uptime24h}% 24h
+                      </span>
+                    )}
+                    {entry.lastLatencyMs !== null && entry.status === 'up' && (
+                      <span className="text-xs text-muted-foreground hidden sm:block tabular-nums w-14 text-right">
+                        {entry.lastLatencyMs}ms
+                      </span>
+                    )}
+                    <MonitorStatusBadge status={entry.status} />
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -468,7 +481,7 @@ export function DashboardPage() {
 
       {/* Network monitor */}
       {isTech && monitorData && monitorData.length > 0 && (
-        <NetworkMonitorWidget assets={monitorData} />
+        <NetworkMonitorWidget entries={monitorData} />
       )}
 
       {/* Admin: integration sync status */}

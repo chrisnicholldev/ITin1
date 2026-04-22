@@ -1,11 +1,14 @@
 import { apiClient } from './client';
 
-export interface MonitorAsset {
-  assetId: string;
+export interface MonitorEntry {
+  sourceId: string;
+  sourceType: 'asset' | 'ipam';
   name: string;
-  assetTag: string;
+  assetTag: string | null;
   type: string;
   ip: string | null;
+  networkId: string | null;
+  networkName: string | null;
   status: 'up' | 'down' | 'unknown';
   lastCheckedAt: string | null;
   lastLatencyMs: number | null;
@@ -13,7 +16,7 @@ export interface MonitorAsset {
   uptime24h: number | null;
 }
 
-export async function getMonitorStatus(): Promise<MonitorAsset[]> {
+export async function getMonitorStatus(): Promise<MonitorEntry[]> {
   const { data } = await apiClient.get('/monitor');
   return data;
 }

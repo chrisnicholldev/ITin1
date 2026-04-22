@@ -3,7 +3,8 @@ import mongoose, { type Document, type Model } from 'mongoose';
 // ── MonitorCheck ── time-series ping results, TTL 7 days ──────────────────────
 
 export interface IMonitorCheck {
-  assetId: mongoose.Types.ObjectId;
+  sourceType: 'asset' | 'ipam';
+  sourceId: mongoose.Types.ObjectId;
   status: 'up' | 'down';
   latencyMs: number | null;
   checkedAt: Date;
@@ -12,13 +13,14 @@ export interface IMonitorCheck {
 export interface IMonitorCheckDocument extends IMonitorCheck, Document {}
 
 const monitorCheckSchema = new mongoose.Schema<IMonitorCheckDocument>({
-  assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: true },
+  sourceType: { type: String, enum: ['asset', 'ipam'], required: true },
+  sourceId: { type: mongoose.Schema.Types.ObjectId, required: true },
   status: { type: String, enum: ['up', 'down'], required: true },
   latencyMs: { type: Number, default: null },
   checkedAt: { type: Date, required: true, default: Date.now },
 });
 
-monitorCheckSchema.index({ assetId: 1, checkedAt: -1 });
+monitorCheckSchema.index({ sourceType: 1, sourceId: 1, checkedAt: -1 });
 monitorCheckSchema.index({ checkedAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 });
 
 export const MonitorCheck: Model<IMonitorCheckDocument> =
@@ -27,7 +29,8 @@ export const MonitorCheck: Model<IMonitorCheckDocument> =
 // ── MonitorState ── current state per asset (upserted each check) ─────────────
 
 export interface IMonitorState {
-  assetId: mongoose.Types.ObjectId;
+  sourceType: 'asset' | 'ipam';
+  sourceId: mongoose.Types.ObjectId;
   currentStatus: 'up' | 'down' | 'unknown';
   lastCheckedAt: Date | null;
   lastLatencyMs: number | null;
@@ -38,13 +41,16 @@ export interface IMonitorState {
 export interface IMonitorStateDocument extends IMonitorState, Document {}
 
 const monitorStateSchema = new mongoose.Schema<IMonitorStateDocument>({
-  assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: true, unique: true },
+  sourceType: { type: String, enum: ['asset', 'ipam'], required: true },
+  sourceId: { type: mongoose.Schema.Types.ObjectId, required: true },
   currentStatus: { type: String, enum: ['up', 'down', 'unknown'], default: 'unknown' },
   lastCheckedAt: { type: Date, default: null },
   lastLatencyMs: { type: Number, default: null },
   statusChangedAt: { type: Date, default: Date.now },
   downAlertSentAt: { type: Date, default: null },
 });
+
+monitorStateSchema.index({ sourceType: 1, sourceId: 1 }, { unique: true });
 
 export const MonitorState: Model<IMonitorStateDocument> =
   mongoose.model<IMonitorStateDocument>('MonitorState', monitorStateSchema);

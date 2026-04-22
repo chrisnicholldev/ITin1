@@ -7,6 +7,7 @@ export interface IIpAddress {
   type: 'static' | 'reserved' | 'dhcp';
   assetId?: mongoose.Types.ObjectId;
   notes?: string;
+  monitored: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,6 +22,7 @@ const IpAddressSchema = new Schema<IIpAddressDocument>(
     type:      { type: String, enum: ['static', 'reserved', 'dhcp'], default: 'static' },
     assetId:   { type: Schema.Types.ObjectId, ref: 'Asset' },
     notes:     { type: String },
+    monitored: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

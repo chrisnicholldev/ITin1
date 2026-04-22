@@ -38,6 +38,7 @@ function toResponse(doc: IIpAddressDocument) {
     type:      doc.type,
     asset:     asset?._id ? { id: String(asset._id), name: asset.name, assetTag: asset.assetTag } : undefined,
     notes:     doc.notes,
+    monitored: doc.monitored ?? false,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };
@@ -111,7 +112,7 @@ export async function getIpamForNetwork(networkId: string) {
 
 export async function assignIp(
   networkId: string,
-  input: { address: string; label: string; type?: 'static' | 'reserved' | 'dhcp'; assetId?: string; notes?: string },
+  input: { address: string; label: string; type?: 'static' | 'reserved' | 'dhcp'; assetId?: string; notes?: string; monitored?: boolean },
 ) {
   const network = await Network.findById(networkId).lean();
   if (!network) throw new AppError(404, 'Network not found');
@@ -130,6 +131,7 @@ export async function assignIp(
     type:       input.type ?? 'static',
     assetId:    input.assetId ? new mongoose.Types.ObjectId(input.assetId) : undefined,
     notes:      input.notes,
+    monitored:  input.monitored ?? false,
   }) as IIpAddressDocument;
 
   await doc.populate('assetId', 'name assetTag');

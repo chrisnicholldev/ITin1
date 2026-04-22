@@ -14,11 +14,11 @@ router.get('/:networkId', async (req: Request, res: Response): Promise<void> => 
 
 // POST /ipam/:networkId — assign an IP
 router.post('/:networkId', requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  const { address, label, type, assetId, notes } = req.body as {
-    address: string; label: string; type?: 'static' | 'reserved' | 'dhcp'; assetId?: string; notes?: string;
+  const { address, label, type, assetId, notes, monitored } = req.body as {
+    address: string; label: string; type?: 'static' | 'reserved' | 'dhcp'; assetId?: string; notes?: string; monitored?: boolean;
   };
   if (!address || !label) { res.status(400).json({ error: 'address and label are required' }); return; }
-  res.status(201).json(await service.assignIp(String(req.params['networkId']), { address, label, type, assetId, notes }));
+  res.status(201).json(await service.assignIp(String(req.params['networkId']), { address, label, type, assetId, notes, monitored }));
 });
 
 // PATCH /ipam/:networkId/:id — update assignment
