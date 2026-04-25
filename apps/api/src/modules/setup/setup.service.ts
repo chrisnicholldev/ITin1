@@ -4,6 +4,7 @@ import { updateSmtpConfig } from '../admin/integration-config.service.js';
 import { User } from '../users/user.model.js';
 import { AppError } from '../../middleware/error.middleware.js';
 import { AuthProvider, UserRole } from '@itdesk/shared';
+import { getGeneratedVaultKey } from '../../lib/secrets.js';
 
 export async function getSetupStatus(): Promise<{ complete: boolean }> {
   const doc = await OrgSettings.findById(SINGLETON_ID);
@@ -70,5 +71,5 @@ export async function completeSetup(input: {
     });
   }
 
-  return { success: true };
+  return { success: true, vaultKey: getGeneratedVaultKey() };
 }

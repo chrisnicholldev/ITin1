@@ -1,6 +1,13 @@
 import mongoose, { type Document, type Model } from 'mongoose';
 
 export interface IIntegrationConfig {
+  entra: {
+    enabled: boolean;
+    tenantId?: string;
+    clientId?: string;
+    clientSecretEnc?: string; // AES-GCM encrypted JSON
+    redirectUri?: string;
+  };
   intune: {
     enabled: boolean;
     tenantId?: string;
@@ -47,6 +54,13 @@ export interface IIntegrationConfigDocument extends IIntegrationConfig, Document
 const schema = new mongoose.Schema<IIntegrationConfigDocument>(
   {
     _id: { type: mongoose.Schema.Types.Mixed },
+    entra: {
+      enabled: { type: Boolean, default: false },
+      tenantId: String,
+      clientId: String,
+      clientSecretEnc: String,
+      redirectUri: String,
+    },
     intune: {
       enabled: { type: Boolean, default: false },
       tenantId: String,
@@ -89,6 +103,7 @@ const schema = new mongoose.Schema<IIntegrationConfigDocument>(
   },
   { timestamps: true },
 );
+
 
 export const IntegrationConfig: Model<IIntegrationConfigDocument> =
   mongoose.model<IIntegrationConfigDocument>('IntegrationConfig', schema);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Shield, Building2, User, Mail, CheckCircle2, ChevronRight, ChevronLeft, Eye, EyeOff, Key, Copy, Check } from 'lucide-react';
@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { completeSetup } from '@/api/setup';
-import { apiClient } from '@/api/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -284,15 +283,8 @@ function StepSmtp({ form, setForm }: { form: FormState; setForm: (f: Partial<For
   );
 }
 
-function StepBackupKey({ acknowledged, onAcknowledge }: { acknowledged: boolean; onAcknowledge: (v: boolean) => void }) {
-  const [vaultKey, setVaultKey] = useState<string | null | undefined>(undefined); // undefined = loading
+function StepBackupKey({ vaultKey, acknowledged, onAcknowledge }: { vaultKey: string | null; acknowledged: boolean; onAcknowledge: (v: boolean) => void }) {
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    apiClient.get('/setup/vault-key').then((r) => {
-      setVaultKey(r.data.vaultKey ?? null);
-    }).catch(() => { setVaultKey(null); });
-  }, []);
 
   function copy() {
     if (!vaultKey) return;
@@ -404,6 +396,7 @@ export function SetupPage() {
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [apiError, setApiError] = useState('');
   const [keyAcknowledged, setKeyAcknowledged] = useState(false);
+  const [vaultKey, setVaultKey] = useState<string | null>(null);
 
   function setForm(partial: Partial<FormState>) {
     setFormRaw((prev) => ({ ...prev, ...partial }));
@@ -428,8 +421,15 @@ export function SetupPage() {
         from: form.smtpFrom,
       } : undefined,
     }),
-    onSuccess: () => setStep(4), // → Backup Key step
+    onSuccess: (data) => {
+      setVaultKey(data.vaultKey ?? null);
+      setStep(4);
+    },
     onError: (err: any) => {
+      if (err?.response?.status === 409) {
+        navigate('/login');
+        return;
+      }
       setApiError(err?.response?.data?.message ?? 'Something went wrong. Please try again.');
     },
   });
@@ -480,7 +480,7 @@ export function SetupPage() {
             {step === 1 && <StepOrg form={form} setForm={setForm} errors={errors} />}
             {step === 2 && <StepAdmin form={form} setForm={setForm} errors={errors} />}
             {step === 3 && <StepSmtp form={form} setForm={setForm} />}
-            {step === 4 && <StepBackupKey acknowledged={keyAcknowledged} onAcknowledge={setKeyAcknowledged} />}
+            {step === 4 && <StepBackupKey vaultKey={vaultKey} acknowledged={keyAcknowledged} onAcknowledge={setKeyAcknowledged} />}
             {step === 5 && <StepDone orgName={form.orgName} onLogin={() => navigate('/login')} />}
           </div>
 
@@ -501,7 +501,7 @@ export function SetupPage() {
                 )}
                 <Button
                   onClick={step === 4 ? () => setStep(5) : next}
-                  disabled={isPending || (step === 4 && !keyAcknowledged)}
+                  disabled={isPending || (step === 4 && vaultKey !== null && !keyAcknowledged)}
                   className="gap-1"
                 >
                   {isPending ? 'Saving...' : step === 3 ? 'Finish' : 'Continue'}
