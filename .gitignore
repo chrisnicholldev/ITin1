@@ -35,3 +35,6 @@ coverage/
 
 # Uploads (local dev)
 apps/api/uploads/
+
+# Generated secrets (auto-created on first run)
+apps/api/data/
