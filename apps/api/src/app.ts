@@ -49,7 +49,7 @@ export function createApp(): Express {
   app.use(helmet());
   app.use(
     cors({
-      origin: env.CLIENT_URL || true,
+      origin: env.CLIENT_URL || (env.NODE_ENV === 'production' ? false : true),
       credentials: true,
     }),
   );

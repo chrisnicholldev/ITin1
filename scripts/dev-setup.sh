@@ -21,6 +21,10 @@ echo "[deps] Installing dependencies..."
 cd "$ROOT"
 pnpm install
 
+# 3. build shared package
+echo "[build] Building @itdesk/shared..."
+pnpm --filter @itdesk/shared build
+
 echo ""
 echo "=== Setup complete ==="
 echo ""

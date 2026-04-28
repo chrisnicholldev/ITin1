@@ -20,6 +20,9 @@ router.get('/vault-key', async (_req: Request, res: Response) => {
 });
 
 router.post('/complete', async (req: Request, res: Response) => {
+  const status = await getSetupStatus();
+  if (status.complete) throw new AppError(404, 'Not found');
+
   const { orgName, adminDisplayName, adminEmail, adminUsername, adminPassword, smtp } = req.body;
 
   if (!orgName?.trim()) throw new AppError(400, 'Organisation name is required');
