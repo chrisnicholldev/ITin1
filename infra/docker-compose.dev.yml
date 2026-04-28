@@ -1,4 +1,4 @@
-name: itdesk-dev
+name: itin1-dev
 
 # Development compose — runs only Mongo and Redis
 # The API and Web run directly with `pnpm dev` (hot reload)

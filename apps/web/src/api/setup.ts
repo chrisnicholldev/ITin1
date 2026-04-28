@@ -19,7 +19,7 @@ export async function completeSetup(input: {
     pass: string;
     from: string;
   };
-}): Promise<{ success: boolean }> {
+}): Promise<{ success: boolean; vaultKey: string | null }> {
   const { data } = await apiClient.post('/setup/complete', input);
   return data;
 }

@@ -48,6 +48,13 @@ export async function getAdLogs() {
 // ── Integration config ─────────────────────────────────────────────────────
 
 export interface IntegrationConfig {
+  entra: {
+    enabled: boolean;
+    tenantId: string;
+    clientId: string;
+    hasClientSecret: boolean;
+    redirectUri: string;
+  };
   intune: {
     enabled: boolean;
     tenantId: string;
@@ -142,6 +149,17 @@ export async function updateSmtpConfig(payload: {
 
 export async function sendSmtpTestEmail(to: string): Promise<void> {
   await apiClient.post('/admin/integrations/config/smtp/test', { to });
+}
+
+export async function updateEntraConfig(payload: {
+  enabled: boolean;
+  tenantId: string;
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+}): Promise<IntegrationConfig> {
+  const { data } = await apiClient.put('/admin/integrations/config/entra', payload);
+  return data;
 }
 
 export async function updateImapConfig(payload: {

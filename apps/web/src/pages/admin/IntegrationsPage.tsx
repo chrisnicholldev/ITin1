@@ -12,7 +12,7 @@ import {
   getIntuneStatus, triggerIntuneSync, getIntuneLogs,
   getMerakiStatus, triggerMerakiSync, getMerakiLogs,
   getAdStatus, triggerAdSync, getAdLogs,
-  getIntegrationConfig, updateIntuneConfig, updateMerakiConfig, updateAdConfig, updateSmtpConfig, sendSmtpTestEmail, updateImapConfig,
+  getIntegrationConfig, updateIntuneConfig, updateMerakiConfig, updateAdConfig, updateSmtpConfig, sendSmtpTestEmail, updateImapConfig, updateEntraConfig,
   type IntegrationConfig,
 } from '@/api/integrations';
 import { getCategories } from '@/api/categories';
@@ -784,6 +784,138 @@ function ImapConfigCard({ config }: { config: IntegrationConfig['imap'] }) {
   );
 }
 
+// ── Entra ID config card ──────────────────────────────────────────────────────
+
+function EntraConfigCard({ config }: { config: IntegrationConfig['entra'] }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [enabled, setEnabled] = useState(config.enabled);
+  const [tenantId, setTenantId] = useState(config.tenantId);
+  const [clientId, setClientId] = useState(config.clientId);
+  const [clientSecret, setClientSecret] = useState('');
+  const [redirectUri, setRedirectUri] = useState(config.redirectUri);
+
+  useEffect(() => {
+    if (!open) {
+      setEnabled(config.enabled);
+      setTenantId(config.tenantId);
+      setClientId(config.clientId);
+      setRedirectUri(config.redirectUri);
+    }
+  }, [config]);
+
+  const { mutate, isPending, error } = useMutation({
+    mutationFn: () => updateEntraConfig({ enabled, tenantId, clientId, clientSecret, redirectUri }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['integration-config'] });
+      setClientSecret('');
+      setOpen(false);
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <svg className="h-4 w-4" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+                <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+                <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+                <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+              </svg>
+              Microsoft Entra ID
+            </CardTitle>
+            <CardDescription>Allow users to sign in with their Microsoft credentials. Entra users are provisioned as end users (ticketing only).</CardDescription>
+          </div>
+          <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
+            config.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+          }`}>
+            {config.enabled ? 'Enabled' : 'Disabled'}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 text-sm">
+          <div>
+            <p className="text-muted-foreground text-xs mb-0.5">Tenant ID</p>
+            <p className="font-medium font-mono text-xs truncate">{config.tenantId || <span className="text-muted-foreground">Not set</span>}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs mb-0.5">Client ID</p>
+            <p className="font-medium font-mono text-xs truncate">{config.clientId || <span className="text-muted-foreground">Not set</span>}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs mb-0.5">Client Secret</p>
+            <p>{config.hasClientSecret ? <span className="text-green-700">Saved</span> : <span className="text-amber-600">Not set</span>}</p>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setOpen(!open)} className="gap-1.5">
+            <Settings className="h-3.5 w-3.5" />
+            Configure
+            {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </Button>
+        </div>
+
+        {open && (
+          <div className="border rounded-md p-4 bg-muted/20 space-y-3">
+            <SetupGuide title="How to set up Entra ID login" steps={[
+              <>In the <strong>Azure Portal</strong>, go to <strong>Microsoft Entra ID → App registrations → New registration</strong>.</>,
+              <>Set the redirect URI to <strong>Single-page application (SPA)</strong> — no, wait — set it to <strong>Web</strong> and enter your callback URL (shown below in the Redirect URI field).</>,
+              <>Under <strong>Certificates & secrets</strong>, create a new client secret and copy the value.</>,
+              <>Copy the <strong>Application (client) ID</strong> and <strong>Directory (tenant) ID</strong> from the app overview page.</>,
+              <>Required API permissions: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">openid</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">profile</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">email</code>, <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">User.Read</code> — these are granted by default, no admin consent required.</>,
+              <>All Entra users will be created as <strong>end users</strong> and can submit and track tickets. IT staff should use local accounts.</>,
+            ]} />
+
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="entra-enabled" className="h-4 w-4"
+                checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+              <Label htmlFor="entra-enabled" className="font-normal cursor-pointer">Enable Entra ID login</Label>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Tenant ID</Label>
+                <Input value={tenantId} onChange={(e) => setTenantId(e.target.value)}
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" className="font-mono text-xs" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Client ID</Label>
+                <Input value={clientId} onChange={(e) => setClientId(e.target.value)}
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" className="font-mono text-xs" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Client Secret {config.hasClientSecret && <span className="text-green-700 text-xs">(saved)</span>}</Label>
+                <SecretInput value={clientSecret} onChange={setClientSecret}
+                  placeholder="Client secret value" hasExisting={config.hasClientSecret} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1">
+                  Redirect URI
+                  <span className="text-xs text-muted-foreground font-normal">(must match Azure App Registration)</span>
+                </Label>
+                <Input value={redirectUri} onChange={(e) => setRedirectUri(e.target.value)}
+                  placeholder="https://your-domain/api/v1/auth/azure/callback" className="font-mono text-xs" />
+              </div>
+            </div>
+
+            {error && <p className="text-xs text-destructive">{(error as any)?.response?.data?.error ?? 'Failed to save'}</p>}
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => mutate()} disabled={isPending}>
+                {isPending ? 'Saving…' : 'Save Entra Config'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function IntegrationsPage() {
@@ -876,6 +1008,9 @@ export function IntegrationsPage() {
   const defaultImapConfig = {
     enabled: false, host: '', port: 993, user: '', hasPassword: false, folder: 'INBOX', defaultCategoryId: '',
   };
+  const defaultEntraConfig = {
+    enabled: false, tenantId: '', clientId: '', hasClientSecret: false, redirectUri: '',
+  };
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -885,6 +1020,8 @@ export function IntegrationsPage() {
         </h1>
         <p className="text-sm text-muted-foreground">Configure and manage external data sources</p>
       </div>
+
+      <EntraConfigCard config={integrationConfig?.entra ?? defaultEntraConfig} />
 
       <IntegrationCard
         title="Microsoft Intune"

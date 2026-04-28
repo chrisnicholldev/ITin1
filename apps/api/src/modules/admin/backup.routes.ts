@@ -5,7 +5,7 @@ import fs from 'fs';
 import { requireAuth, requireAdmin } from '../../middleware/auth.middleware.js';
 import * as backup from './backup.controller.js';
 import { getOrgSettings, updateOrgSettings } from './settings.model.js';
-import { getIntegrationConfigMasked, updateIntuneConfig, updateMerakiConfig, updateAdConfig, updateSmtpConfig, updateImapConfig } from './integration-config.service.js';
+import { getIntegrationConfigMasked, updateIntuneConfig, updateMerakiConfig, updateAdConfig, updateSmtpConfig, updateImapConfig, updateEntraConfig, getEntraRuntimeConfig } from './integration-config.service.js';
 import { sendMail } from '../../lib/mailer.js';
 import { applyIntuneSchedule, applyMerakiSchedule, applyAdSchedule } from '../../jobs/queues.js';
 import { env } from '../../config/env.js';
@@ -34,8 +34,8 @@ const logoUpload = multer({
 
 // ── Org settings (GET is public so login page can show org name) ──────────────
 router.get('/settings', async (_req: Request, res: Response) => {
-  const settings = await getOrgSettings();
-  res.json({ ...settings, azureAdEnabled: env.AZURE_AD_ENABLED });
+  const [settings, entra] = await Promise.all([getOrgSettings(), getEntraRuntimeConfig()]);
+  res.json({ ...settings, azureAdEnabled: entra.enabled });
 });
 
 router.patch('/settings', requireAuth, requireAdmin, async (req: Request, res: Response) => {
@@ -140,6 +140,17 @@ router.put('/integrations/config/imap', requireAuth, requireAdmin, async (req: R
     pass: pass || undefined,
     folder: folder || undefined,
     defaultCategoryId: defaultCategoryId || undefined,
+  }));
+});
+
+router.put('/integrations/config/entra', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+  const { enabled, tenantId, clientId, clientSecret, redirectUri } = req.body as Record<string, string>;
+  res.json(await updateEntraConfig({
+    enabled: enabled === 'true' || enabled === true as any,
+    tenantId: tenantId || undefined,
+    clientId: clientId || undefined,
+    clientSecret: clientSecret || undefined,
+    redirectUri: redirectUri || undefined,
   }));
 });
 

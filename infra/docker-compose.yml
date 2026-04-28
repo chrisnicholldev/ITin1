@@ -1,4 +1,4 @@
-name: itdesk
+name: itin1
 
 services:
   mongo:

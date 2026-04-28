@@ -104,11 +104,7 @@ export async function me(req: Request, res: Response): Promise<void> {
 const AZURE_STATE_COOKIE = 'azure_oauth_state';
 const AZURE_STATE_TTL = 10 * 60 * 1000; // 10 minutes
 
-export function azureRedirect(req: Request, res: Response): void {
-  if (!env.AZURE_AD_ENABLED) {
-    res.status(404).json({ error: 'Azure AD login is not enabled' });
-    return;
-  }
+export async function azureRedirect(req: Request, res: Response): Promise<void> {
   const state = generateState();
   res.cookie(AZURE_STATE_COOKIE, state, {
     httpOnly: true,
@@ -117,7 +113,7 @@ export function azureRedirect(req: Request, res: Response): void {
     maxAge: AZURE_STATE_TTL,
     path: '/',
   });
-  res.redirect(getAuthorizationUrl(state));
+  res.redirect(await getAuthorizationUrl(state));
 }
 
 export async function azureCallback(req: Request, res: Response): Promise<void> {

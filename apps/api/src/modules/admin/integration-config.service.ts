@@ -23,6 +23,13 @@ async function getDoc() {
 export async function getIntegrationConfigMasked() {
   const doc = await getDoc();
   return {
+    entra: {
+      enabled: doc?.entra?.enabled ?? env.AZURE_AD_ENABLED,
+      tenantId: doc?.entra?.tenantId ?? env.AZURE_AD_TENANT_ID ?? '',
+      clientId: doc?.entra?.clientId ?? env.AZURE_AD_CLIENT_ID ?? '',
+      hasClientSecret: !!(doc?.entra?.clientSecretEnc ?? env.AZURE_AD_CLIENT_SECRET),
+      redirectUri: doc?.entra?.redirectUri ?? env.AZURE_AD_REDIRECT_URI ?? '',
+    },
     intune: {
       enabled: doc?.intune?.enabled ?? env.INTUNE_ENABLED,
       tenantId: doc?.intune?.tenantId ?? env.INTUNE_TENANT_ID ?? '',
@@ -300,6 +307,49 @@ export async function updateImapConfig(input: {
   );
 
   return getIntegrationConfigMasked();
+}
+
+export async function updateEntraConfig(input: {
+  enabled?: boolean;
+  tenantId?: string;
+  clientId?: string;
+  clientSecret?: string; // empty = keep existing
+  redirectUri?: string;
+}) {
+  const existing = await getDoc();
+
+  const entra: Record<string, unknown> = {
+    enabled: input.enabled ?? existing?.entra?.enabled ?? false,
+    tenantId: input.tenantId ?? existing?.entra?.tenantId,
+    clientId: input.clientId ?? existing?.entra?.clientId,
+    clientSecretEnc: existing?.entra?.clientSecretEnc,
+    redirectUri: input.redirectUri ?? existing?.entra?.redirectUri,
+  };
+
+  if (input.clientSecret?.trim()) {
+    entra['clientSecretEnc'] = encryptField(input.clientSecret.trim());
+  }
+
+  await IntegrationConfig.findByIdAndUpdate(
+    INTEGRATION_CONFIG_ID,
+    { $set: { entra } },
+    { upsert: true, new: true },
+  );
+
+  return getIntegrationConfigMasked();
+}
+
+export async function getEntraRuntimeConfig() {
+  const doc = await getDoc();
+  const enabled = doc?.entra?.enabled ?? env.AZURE_AD_ENABLED;
+  const tenantId = doc?.entra?.tenantId || env.AZURE_AD_TENANT_ID;
+  const clientId = doc?.entra?.clientId || env.AZURE_AD_CLIENT_ID;
+  const clientSecret = doc?.entra?.clientSecretEnc
+    ? decryptField(doc.entra.clientSecretEnc)
+    : env.AZURE_AD_CLIENT_SECRET;
+  const redirectUri = doc?.entra?.redirectUri || env.AZURE_AD_REDIRECT_URI;
+
+  return { enabled, tenantId, clientId, clientSecret, redirectUri };
 }
 
 export async function getImapRuntimeConfig() {
