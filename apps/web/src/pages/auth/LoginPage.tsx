@@ -218,15 +218,17 @@ export function LoginPage() {
                   Sign in
                 </Button>
 
-                <div className="text-center">
-                  <button
-                    type="button"
-                    className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
-                    onClick={() => { setStage('forgot'); setError(null); }}
-                  >
-                    Forgot password?
-                  </button>
-                </div>
+                {!azureAdEnabled && (
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+                      onClick={() => { setStage('forgot'); setError(null); }}
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
 
                 {azureAdEnabled && (
                   <>
