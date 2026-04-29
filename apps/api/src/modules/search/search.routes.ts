@@ -36,11 +36,13 @@ router.get('/', async (req: Request, res: Response) => {
       ...(!isAdmin && !isTech ? { submittedBy: user.id } : {}),
     }).select('ticketNumber title status priority').limit(LIMIT).lean(),
 
-    // Docs — drafts for admins only
-    Article.find({
-      $or: [{ title: regex }, { tags: regex }],
-      ...(!isAdmin ? { publishedAt: { $ne: null } } : {}),
-    }).populate('folder', 'name').select('title slug folder').limit(LIMIT).lean(),
+    // Docs — technician+ only
+    isTech
+      ? Article.find({
+          $or: [{ title: regex }, { tags: regex }],
+          ...(!isAdmin ? { publishedAt: { $ne: null } } : {}),
+        }).populate('folder', 'name').select('title slug folder').limit(LIMIT).lean()
+      : [],
 
     // Contacts — technician+ only
     isTech
