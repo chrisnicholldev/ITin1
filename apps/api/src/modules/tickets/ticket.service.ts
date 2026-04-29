@@ -111,7 +111,8 @@ export async function getTicket(id: string, viewerRole: string, viewerId: string
 
   if (!ticket) throw new AppError(404, 'Ticket not found');
 
-  if (viewerRole === 'end_user' && ticket.submittedBy.toString() !== viewerId) {
+  const submittedById = (ticket.submittedBy as any)?._id?.toString() ?? ticket.submittedBy.toString();
+  if (viewerRole === 'end_user' && submittedById !== viewerId) {
     throw new AppError(403, 'Access denied');
   }
 
