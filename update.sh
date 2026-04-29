@@ -7,6 +7,7 @@ set -euo pipefail
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 COMPOSE_FILE="infra/docker-compose.yml"
+PROJECT="itdesk"
 HEALTH_URL="${ITDESK_URL:-}"       # Set ITDESK_URL in .env to enable health check
 HEALTH_TIMEOUT=60                  # Seconds to wait for app to come back up
 BRANCH="main"
@@ -64,13 +65,13 @@ fi
 # ── Pull latest images ─────────────────────────────────────────────────────────
 step "Pulling latest images"
 
-docker compose -f "$COMPOSE_FILE" pull
+docker compose -f "$COMPOSE_FILE" -p "$PROJECT" pull
 info "Images up to date"
 
 # ── Restart services ───────────────────────────────────────────────────────────
 step "Restarting services"
 
-docker compose -f "$COMPOSE_FILE" up -d
+docker compose -f "$COMPOSE_FILE" -p "$PROJECT" up -d
 info "Services restarted"
 
 # ── Reload nginx ──────────────────────────────────────────────────────────────
@@ -114,4 +115,4 @@ DURATION=$((END_TIME - START_TIME))
 echo ""
 echo -e "${GREEN}Update complete in ${DURATION}s${NC}"
 echo ""
-docker compose -f "$COMPOSE_FILE" ps --format "table {{.Name}}\t{{.Status}}"
+docker compose -f "$COMPOSE_FILE" -p "$PROJECT" ps --format "table {{.Name}}\t{{.Status}}"
