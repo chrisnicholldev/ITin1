@@ -6,7 +6,7 @@ const router: IRouter = Router();
 
 router.use(requireAuth);
 
-router.get('/', requireTech, c.listCategories);
+router.get('/', c.listCategories);
 router.post('/', requireAdmin, c.createCategory);
 router.patch('/:id', requireAdmin, c.updateCategory);
 router.delete('/:id', requireAdmin, c.deleteCategory);
