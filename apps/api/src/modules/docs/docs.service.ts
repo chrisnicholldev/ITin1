@@ -76,6 +76,7 @@ function articleToResponse(doc: IArticleDocument) {
     tags: doc.tags,
     sourceUrl: doc.sourceUrl,
     published: !!doc.publishedAt,
+    endUserVisible: doc.endUserVisible ?? false,
     publishedAt: doc.publishedAt?.toISOString(),
     createdBy: obj.createdBy
       ? { id: obj.createdBy._id?.toString() ?? obj.createdBy.id, displayName: obj.createdBy.displayName }
@@ -126,11 +127,13 @@ export async function listArticles(query: {
   locationId?: string;
   search?: string;
   drafts?: boolean;
+  endUserOnly?: boolean;
   page?: number;
   limit?: number;
 }) {
   const filter: Record<string, unknown> = {};
   if (!query.drafts) filter['publishedAt'] = { $exists: true, $ne: null };
+  if (query.endUserOnly) filter['endUserVisible'] = true;
   if (query.folderId) filter['folder'] = new mongoose.Types.ObjectId(query.folderId);
   if (query.tag) filter['tags'] = query.tag;
   if (query.locationId) filter['linkedLocation'] = new mongoose.Types.ObjectId(query.locationId);
@@ -158,7 +161,7 @@ export async function listArticles(query: {
   };
 }
 
-export async function getArticle(slug: string) {
+export async function getArticle(slug: string, viewerRole?: string) {
   const doc = await Article.findOne({ slug })
     .populate('folder', 'name icon')
     .populate('linkedAssets', 'name assetTag')
@@ -166,6 +169,7 @@ export async function getArticle(slug: string) {
     .populate('createdBy', 'displayName')
     .populate('updatedBy', 'displayName') as IArticleDocument | null;
   if (!doc) throw new AppError(404, 'Article not found');
+  if (viewerRole === 'end_user' && !doc.endUserVisible) throw new AppError(403, 'Access denied');
   return articleToResponse(doc);
 }
 
@@ -182,6 +186,7 @@ export async function createArticle(input: CreateArticleInput, userId: string) {
     linkedLocation: input.linkedLocationId ? new mongoose.Types.ObjectId(input.linkedLocationId) : undefined,
     tags: input.tags ?? [],
     publishedAt: input.published ? new Date() : undefined,
+    endUserVisible: input.endUserVisible ?? false,
     createdBy: new mongoose.Types.ObjectId(userId),
   }) as IArticleDocument;
   return getArticle(doc.slug);
@@ -201,6 +206,7 @@ export async function updateArticle(slug: string, input: UpdateArticleInput, use
   if (input.published !== undefined) {
     updates['publishedAt'] = input.published ? (existing.publishedAt ?? new Date()) : null;
   }
+  if (input.endUserVisible !== undefined) updates['endUserVisible'] = input.endUserVisible;
 
   await Article.findByIdAndUpdate(existing._id, { $set: updates });
   return getArticle(slug);

@@ -28,6 +28,7 @@ export function ArticleEditorPage() {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [published, setPublished] = useState(true);
+  const [endUserVisible, setEndUserVisible] = useState(false);
   const [sourceUrl, setSourceUrl] = useState('');
   const [initialised, setInitialised] = useState(false);
 
@@ -56,6 +57,7 @@ export function ArticleEditorPage() {
       setLocationId((article.linkedLocation as any)?.id ?? '');
       setTags(article.tags ?? []);
       setPublished(article.published);
+      setEndUserVisible((article as any).endUserVisible ?? false);
       setSourceUrl((article as any).sourceUrl ?? '');
       setInitialised(true);
     }
@@ -71,6 +73,7 @@ export function ArticleEditorPage() {
         linkedAssets: [],
         tags,
         published,
+        endUserVisible,
         sourceUrl: sourceUrl.trim() || undefined,
       };
       return isEditing ? updateArticle(slug!, payload) : createArticle(payload);
@@ -100,6 +103,15 @@ export function ArticleEditorPage() {
           <ArrowLeft className="h-3.5 w-3.5" /> Back
         </Button>
         <div className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={endUserVisible}
+              onChange={(e) => setEndUserVisible(e.target.checked)}
+            />
+            Visible to end users
+          </label>
           <Button
             type="button"
             variant="outline"

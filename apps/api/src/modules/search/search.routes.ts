@@ -36,13 +36,17 @@ router.get('/', async (req: Request, res: Response) => {
       ...(!isAdmin && !isTech ? { submittedBy: user.id } : {}),
     }).select('ticketNumber title status priority').limit(LIMIT).lean(),
 
-    // Docs — technician+ only
+    // Docs — technician+ sees all published; end users see endUserVisible only
     isTech
       ? Article.find({
           $or: [{ title: regex }, { tags: regex }],
           ...(!isAdmin ? { publishedAt: { $ne: null } } : {}),
         }).populate('folder', 'name').select('title slug folder').limit(LIMIT).lean()
-      : [],
+      : Article.find({
+          $or: [{ title: regex }, { tags: regex }],
+          publishedAt: { $ne: null },
+          endUserVisible: true,
+        }).populate('folder', 'name').select('title slug folder').limit(LIMIT).lean(),
 
     // Contacts — technician+ only
     isTech

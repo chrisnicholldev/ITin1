@@ -38,19 +38,22 @@ export async function listArticles(req: Request, res: Response) {
   const { folderId, tag, locationId, search, page, limit } = req.query as Record<string, string>;
   const user = (req as AuthenticatedRequest).user;
   const isAdmin = user.role === 'it_admin' || user.role === 'super_admin';
+  const isEndUser = user.role === 'end_user';
   res.json(await service.listArticles({
     folderId,
     tag,
     locationId,
     search,
     drafts: isAdmin,
+    endUserOnly: isEndUser,
     page: page ? Number(page) : 1,
     limit: limit ? Number(limit) : 30,
   }));
 }
 
 export async function getArticle(req: Request, res: Response) {
-  res.json(await service.getArticle(String(req.params['slug'])));
+  const user = (req as AuthenticatedRequest).user;
+  res.json(await service.getArticle(String(req.params['slug']), user.role));
 }
 
 export async function createArticle(req: Request, res: Response) {

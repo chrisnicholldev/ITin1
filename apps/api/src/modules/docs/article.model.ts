@@ -11,6 +11,7 @@ export interface IArticle {
   tags: string[];
   sourceUrl?: string;
   publishedAt?: Date;
+  endUserVisible: boolean;
   createdBy: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -31,6 +32,7 @@ const articleSchema = new mongoose.Schema<IArticleDocument>(
     tags: [{ type: String }],
     sourceUrl: { type: String },
     publishedAt: Date,
+    endUserVisible: { type: Boolean, default: false },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
