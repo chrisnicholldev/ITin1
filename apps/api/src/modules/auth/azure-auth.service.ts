@@ -77,10 +77,8 @@ export async function handleAzureCallback(code: string): Promise<{ accessToken: 
 
   const email = (profile.mail ?? profile.userPrincipalName).toLowerCase();
 
-  // All Entra users are end users — IT staff use local accounts
-  const role = UserRole.END_USER;
-
   const existing = await User.findOne({ email });
+  const isLocalAccount = existing?.authProvider === AuthProvider.LOCAL;
   const localPart = email.split('@').at(0) ?? email;
   const username = existing?.username ?? localPart.toLowerCase().replace(/[^a-z0-9._-]/g, '');
 
@@ -91,8 +89,8 @@ export async function handleAzureCallback(code: string): Promise<{ accessToken: 
         email,
         displayName: profile.displayName,
         username,
-        authProvider: AuthProvider.AZURE_AD,
-        role,
+        // Never overwrite role or authProvider on an existing local account
+        ...(!isLocalAccount && { authProvider: AuthProvider.AZURE_AD, role: UserRole.END_USER }),
         ...(profile.department && { department: profile.department }),
         ...(profile.jobTitle && { title: profile.jobTitle }),
         azureId: profile.id,
