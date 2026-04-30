@@ -39,8 +39,8 @@ export function CreateTicketPage() {
 
   const { data: entraUsers = [] } = useQuery<EntraUser[]>({
     queryKey: ['entra-users', userSearch],
-    queryFn: () => getEntraUsers(userSearch || undefined),
-    enabled: isTech,
+    queryFn: () => getEntraUsers(userSearch),
+    enabled: isTech && userSearch.length >= 2,
   });
 
   const {
@@ -105,7 +105,7 @@ export function CreateTicketPage() {
                       onFocus={() => setShowUserDropdown(true)}
                       onBlur={() => setTimeout(() => setShowUserDropdown(false), 150)}
                     />
-                    {showUserDropdown && entraUsers.length > 0 && (
+                    {showUserDropdown && userSearch.length >= 2 && entraUsers.length > 0 && (
                       <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-white shadow-md overflow-hidden">
                         {entraUsers.map((u) => (
                           <button
