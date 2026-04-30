@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Search, Bookmark, X, BarChart2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,9 +37,10 @@ export function TicketsPage() {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const isTech = user?.role !== UserRole.END_USER;
+  const [searchParams] = useSearchParams();
 
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState(() => searchParams.get('status') ?? '');
   const [priority, setPriority] = useState('');
   const [assignedTeam, setAssignedTeam] = useState('');
   const [page, setPage] = useState(1);
