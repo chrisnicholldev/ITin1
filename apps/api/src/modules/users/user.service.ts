@@ -125,6 +125,18 @@ export async function updateSelf(
   return toResponse(user);
 }
 
+export async function listEntraUsers(search?: string) {
+  const filter: Record<string, unknown> = { authProvider: AuthProvider.AZURE_AD, isActive: true };
+  if (search) {
+    filter['$or'] = [
+      { displayName: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } },
+    ];
+  }
+  const users = await User.find(filter).sort({ displayName: 1 }).limit(100).select('displayName email') as IUserDocument[];
+  return users.map((u) => ({ id: u.id as string, displayName: u.displayName, email: u.email }));
+}
+
 export async function updateNotificationPreferences(
   id: string,
   prefs: Partial<{ onTicketCreated: boolean; onTicketAssigned: boolean; onStatusChanged: boolean; onCommentAdded: boolean }>,

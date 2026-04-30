@@ -20,6 +20,11 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
   res.json(await userService.listUsers(query as ListUsersQuery));
 }
 
+export async function listEntraUsers(req: Request, res: Response): Promise<void> {
+  const { search } = req.query as { search?: string };
+  res.json(await userService.listEntraUsers(search));
+}
+
 export async function getUser(req: Request, res: Response): Promise<void> {
   res.json(await userService.getUser(String(req.params['id'])));
 }

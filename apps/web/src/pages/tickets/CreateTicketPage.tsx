@@ -1,20 +1,31 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { createTicket } from '@/api/tickets';
+import { getEntraUsers } from '@/api/users';
 import { apiClient } from '@/api/client';
+import { useAuthStore } from '@/stores/auth.store';
 import { CreateTicketSchema, TicketPriority, type CreateTicketInput } from '@itdesk/shared';
+
+const TECH_ROLES = new Set(['it_technician', 'it_admin', 'super_admin']);
 
 export function CreateTicketPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((s) => s.user);
+  const isTech = TECH_ROLES.has(currentUser?.role ?? '');
+
+  const [userSearch, setUserSearch] = useState('');
+  const [selectedUser, setSelectedUser] = useState<{ id: string; displayName: string; email: string } | null>(null);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
@@ -22,6 +33,12 @@ export function CreateTicketPage() {
       const { data } = await apiClient.get('/categories');
       return data as Array<{ id: string; name: string; subcategories: string[] }>;
     },
+  });
+
+  const { data: entraUsers = [] } = useQuery({
+    queryKey: ['entra-users', userSearch],
+    queryFn: () => getEntraUsers(userSearch || undefined),
+    enabled: isTech,
   });
 
   const {
@@ -39,7 +56,10 @@ export function CreateTicketPage() {
   const selectedCategoryData = categories.find((c) => c.id === selectedCategory);
 
   const { mutate, isPending, error } = useMutation({
-    mutationFn: createTicket,
+    mutationFn: (data: CreateTicketInput) => createTicket({
+      ...data,
+      ...(isTech && selectedUser ? { submittedForUserId: selectedUser.id } : {}),
+    }),
     onSuccess: (ticket: { id: string }) => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
       navigate(`/tickets/${ticket.id}`);
@@ -56,6 +76,47 @@ export function CreateTicketPage() {
       <Card>
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit((data) => mutate(data))} className="space-y-4">
+
+            {isTech && (
+              <div className="space-y-2">
+                <Label>Submitted for</Label>
+                {selectedUser ? (
+                  <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <span className="flex-1">{selectedUser.displayName} <span className="text-muted-foreground">({selectedUser.email})</span></span>
+                    <button type="button" onClick={() => { setSelectedUser(null); setUserSearch(''); }}>
+                      <X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Input
+                      placeholder="Search Entra users…"
+                      value={userSearch}
+                      onChange={(e) => { setUserSearch(e.target.value); setShowUserDropdown(true); }}
+                      onFocus={() => setShowUserDropdown(true)}
+                      onBlur={() => setTimeout(() => setShowUserDropdown(false), 150)}
+                    />
+                    {showUserDropdown && entraUsers.length > 0 && (
+                      <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md">
+                        {entraUsers.map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                            onMouseDown={() => { setSelectedUser(u); setShowUserDropdown(false); }}
+                          >
+                            <span className="font-medium">{u.displayName}</span>
+                            <span className="ml-2 text-muted-foreground text-xs">{u.email}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">Leave blank to submit as yourself.</p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="title">Title *</Label>
               <Input

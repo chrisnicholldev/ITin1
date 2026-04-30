@@ -23,7 +23,9 @@ export async function getTicket(req: Request, res: Response): Promise<void> {
 export async function createTicket(req: Request, res: Response): Promise<void> {
   const user = auth(req);
   const input = CreateTicketSchema.parse(req.body);
-  res.status(201).json(await ticketService.createTicket(input, user.id));
+  const isTech = ['it_technician', 'it_admin', 'super_admin'].includes(user.role);
+  const submittedBy = (isTech && input.submittedForUserId) ? input.submittedForUserId : user.id;
+  res.status(201).json(await ticketService.createTicket(input, submittedBy));
 }
 
 export async function updateTicket(req: Request, res: Response): Promise<void> {
