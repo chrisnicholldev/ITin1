@@ -24,7 +24,15 @@ export async function createTicket(req: Request, res: Response): Promise<void> {
   const user = auth(req);
   const input = CreateTicketSchema.parse(req.body);
   const isTech = ['it_technician', 'it_admin', 'super_admin'].includes(user.role);
-  const submittedBy = (isTech && input.submittedForUserId) ? input.submittedForUserId : user.id;
+  let submittedBy = user.id;
+  if (isTech && input.submittedForAzureId) {
+    const { findOrCreateByAzureId } = await import('../users/user.service.js');
+    submittedBy = await findOrCreateByAzureId(
+      input.submittedForAzureId,
+      input.submittedForName ?? '',
+      input.submittedForEmail ?? '',
+    );
+  }
   res.status(201).json(await ticketService.createTicket(input, submittedBy));
 }
 

@@ -22,7 +22,11 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
 
 export async function listEntraUsers(req: Request, res: Response): Promise<void> {
   const { search } = req.query as { search?: string };
-  res.json(await userService.listEntraUsers(search));
+  try {
+    res.json(await userService.listEntraUsers(search));
+  } catch {
+    res.json([]);
+  }
 }
 
 export async function getUser(req: Request, res: Response): Promise<void> {

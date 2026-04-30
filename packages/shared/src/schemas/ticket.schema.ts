@@ -30,7 +30,9 @@ export const CreateTicketSchema = z.object({
   subcategory: z.string().optional(),
   relatedAssets: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
-  submittedForUserId: z.string().optional(),
+  submittedForAzureId: z.string().optional(),
+  submittedForName: z.string().optional(),
+  submittedForEmail: z.string().optional(),
 });
 
 export const UpdateTicketSchema = z.object({

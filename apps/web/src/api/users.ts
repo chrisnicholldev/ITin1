@@ -47,7 +47,7 @@ export async function updateMe(input: { displayName?: string; email?: string; ph
 
 export async function getEntraUsers(search?: string) {
   const { data } = await apiClient.get('/users/entra', { params: search ? { search } : {} });
-  return data as Array<{ id: string; displayName: string; email: string }>;
+  return data as Array<{ graphId: string; displayName: string; email: string }>;
 }
 
 export async function updateNotificationPreferences(prefs: Record<string, boolean>) {

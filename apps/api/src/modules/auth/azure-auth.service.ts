@@ -71,6 +71,54 @@ async function getGraphProfile(accessToken: string): Promise<{
   return resp.json() as Promise<any>;
 }
 
+async function getAppOnlyToken(): Promise<string> {
+  const cfg = await getEntraRuntimeConfig();
+  if (!cfg.clientId || !cfg.tenantId || !cfg.clientSecret) {
+    throw new AppError(503, 'Entra ID is not fully configured');
+  }
+  const resp = await fetch(
+    `https://login.microsoftonline.com/${cfg.tenantId}/oauth2/v2.0/token`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: cfg.clientId,
+        client_secret: cfg.clientSecret,
+        scope: 'https://graph.microsoft.com/.default',
+        grant_type: 'client_credentials',
+      }).toString(),
+    },
+  );
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({})) as Record<string, string>;
+    throw new AppError(503, `Failed to get app token: ${err['error_description'] ?? resp.statusText}`);
+  }
+  const data = await resp.json() as { access_token: string };
+  return data.access_token;
+}
+
+export async function searchTenantUsers(search: string): Promise<{ graphId: string; displayName: string; email: string }[]> {
+  const token = await getAppOnlyToken();
+  const params = new URLSearchParams({
+    $select: 'id,displayName,mail,userPrincipalName',
+    $top: '25',
+    ...(search ? { $search: `"displayName:${search}" OR "mail:${search}"` } : { $orderby: 'displayName' }),
+  });
+  const resp = await fetch(`${GRAPH_BASE}/users?${params}`, {
+    headers: { Authorization: `Bearer ${token}`, ConsistencyLevel: 'eventual' },
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({})) as Record<string, string>;
+    throw new AppError(502, `Graph user search failed: ${err['error']?.toString() ?? resp.statusText}`);
+  }
+  const data = await resp.json() as { value: { id: string; displayName: string; mail: string | null; userPrincipalName: string }[] };
+  return (data.value ?? []).map((u) => ({
+    graphId: u.id,
+    displayName: u.displayName ?? u.userPrincipalName,
+    email: (u.mail ?? u.userPrincipalName).toLowerCase(),
+  }));
+}
+
 export async function handleAzureCallback(code: string): Promise<{ accessToken: string; refreshToken: string }> {
   const msAccessToken = await exchangeCode(code);
   const profile = await getGraphProfile(msAccessToken);

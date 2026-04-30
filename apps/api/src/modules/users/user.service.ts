@@ -2,7 +2,7 @@ import { User, type IUserDocument } from './user.model.js';
 import { AppError } from '../../middleware/error.middleware.js';
 import type { CreateUserInput, UpdateUserInput } from '@itdesk/shared';
 import bcrypt from 'bcryptjs';
-import { AuthProvider } from '@itdesk/shared';
+import { AuthProvider, UserRole } from '@itdesk/shared';
 
 function toResponse(user: IUserDocument) {
   return {
@@ -126,15 +126,29 @@ export async function updateSelf(
 }
 
 export async function listEntraUsers(search?: string) {
-  const filter: Record<string, unknown> = { authProvider: AuthProvider.AZURE_AD, isActive: true };
-  if (search) {
-    filter['$or'] = [
-      { displayName: { $regex: search, $options: 'i' } },
-      { email: { $regex: search, $options: 'i' } },
-    ];
-  }
-  const users = await User.find(filter).sort({ displayName: 1 }).limit(100).select('displayName email') as IUserDocument[];
-  return users.map((u) => ({ id: u.id as string, displayName: u.displayName, email: u.email }));
+  const { searchTenantUsers } = await import('../auth/azure-auth.service.js');
+  return searchTenantUsers(search ?? '');
+}
+
+export async function findOrCreateByAzureId(graphId: string, displayName: string, email: string): Promise<string> {
+  const localPart = email.split('@').at(0) ?? email;
+  const username = localPart.toLowerCase().replace(/[^a-z0-9._-]/g, '');
+  const user = await User.findOneAndUpdate(
+    { azureId: graphId },
+    {
+      $setOnInsert: {
+        azureId: graphId,
+        email: email.toLowerCase(),
+        displayName,
+        username,
+        authProvider: AuthProvider.AZURE_AD,
+        role: UserRole.END_USER,
+        isActive: true,
+      },
+    },
+    { upsert: true, new: true },
+  );
+  return user.id as string;
 }
 
 export async function updateNotificationPreferences(

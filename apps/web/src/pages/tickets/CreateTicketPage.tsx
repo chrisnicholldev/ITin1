@@ -17,6 +17,8 @@ import { CreateTicketSchema, TicketPriority, type CreateTicketInput } from '@itd
 
 const TECH_ROLES = new Set(['it_technician', 'it_admin', 'super_admin']);
 
+type EntraUser = { graphId: string; displayName: string; email: string };
+
 export function CreateTicketPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -24,7 +26,7 @@ export function CreateTicketPage() {
   const isTech = TECH_ROLES.has(currentUser?.role ?? '');
 
   const [userSearch, setUserSearch] = useState('');
-  const [selectedUser, setSelectedUser] = useState<{ id: string; displayName: string; email: string } | null>(null);
+  const [selectedUser, setSelectedUser] = useState<EntraUser | null>(null);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   const { data: categories = [] } = useQuery({
@@ -35,7 +37,7 @@ export function CreateTicketPage() {
     },
   });
 
-  const { data: entraUsers = [] } = useQuery({
+  const { data: entraUsers = [] } = useQuery<EntraUser[]>({
     queryKey: ['entra-users', userSearch],
     queryFn: () => getEntraUsers(userSearch || undefined),
     enabled: isTech,
@@ -58,7 +60,11 @@ export function CreateTicketPage() {
   const { mutate, isPending, error } = useMutation({
     mutationFn: (data: CreateTicketInput) => createTicket({
       ...data,
-      ...(isTech && selectedUser ? { submittedForUserId: selectedUser.id } : {}),
+      ...(isTech && selectedUser ? {
+        submittedForAzureId: selectedUser.graphId,
+        submittedForName: selectedUser.displayName,
+        submittedForEmail: selectedUser.email,
+      } : {}),
     }),
     onSuccess: (ticket: { id: string }) => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
@@ -82,7 +88,10 @@ export function CreateTicketPage() {
                 <Label>Submitted for</Label>
                 {selectedUser ? (
                   <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm">
-                    <span className="flex-1">{selectedUser.displayName} <span className="text-muted-foreground">({selectedUser.email})</span></span>
+                    <span className="flex-1">
+                      {selectedUser.displayName}
+                      <span className="ml-2 text-muted-foreground text-xs">{selectedUser.email}</span>
+                    </span>
                     <button type="button" onClick={() => { setSelectedUser(null); setUserSearch(''); }}>
                       <X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
                     </button>
@@ -90,20 +99,20 @@ export function CreateTicketPage() {
                 ) : (
                   <div className="relative">
                     <Input
-                      placeholder="Search Entra users…"
+                      placeholder="Search by name or email…"
                       value={userSearch}
                       onChange={(e) => { setUserSearch(e.target.value); setShowUserDropdown(true); }}
                       onFocus={() => setShowUserDropdown(true)}
                       onBlur={() => setTimeout(() => setShowUserDropdown(false), 150)}
                     />
                     {showUserDropdown && entraUsers.length > 0 && (
-                      <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md">
+                      <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-white shadow-md overflow-hidden">
                         {entraUsers.map((u) => (
                           <button
-                            key={u.id}
+                            key={u.graphId}
                             type="button"
                             className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
-                            onMouseDown={() => { setSelectedUser(u); setShowUserDropdown(false); }}
+                            onMouseDown={() => { setSelectedUser(u); setShowUserDropdown(false); setUserSearch(''); }}
                           >
                             <span className="font-medium">{u.displayName}</span>
                             <span className="ml-2 text-muted-foreground text-xs">{u.email}</span>
