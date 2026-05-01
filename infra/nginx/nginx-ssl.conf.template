@@ -56,6 +56,9 @@ http {
         # Uncomment once you've confirmed HTTPS is working:
         # add_header Strict-Transport-Security "max-age=31536000" always;
 
+        # Allow Teams to embed the app in an iframe
+        add_header Content-Security-Policy "frame-ancestors 'self' https://teams.microsoft.com https://*.teams.microsoft.com https://*.office.com https://*.office365.com https://*.skype.com" always;
+
         location /api/ {
             proxy_pass http://api;
             proxy_http_version 1.1;

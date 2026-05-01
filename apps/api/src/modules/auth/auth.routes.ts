@@ -13,6 +13,7 @@ import {
   azureCallback,
   forgotPassword,
   resetPasswordHandler,
+  teamsSso,
 } from './auth.controller.js';
 import { requireAuth } from '../../middleware/auth.middleware.js';
 
@@ -47,6 +48,7 @@ const twoFaLimiter = rateLimit({
 
 router.get('/azure', azureRedirect);
 router.get('/azure/callback', azureCallback);
+router.post('/teams-sso', loginLimiter, teamsSso);
 
 router.post('/login', loginLimiter, login);
 router.post('/forgot-password', resetLimiter, forgotPassword);

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "1.0.0",
+  "id": "{{APP_ID}}",
+  "packageName": "ca.bc.csrd.itdesk",
+  "developer": {
+    "name": "CSRD IT",
+    "websiteUrl": "https://{{DOMAIN}}",
+    "privacyUrl": "https://{{DOMAIN}}",
+    "termsOfUseUrl": "https://{{DOMAIN}}"
+  },
+  "name": {
+    "short": "IT Helpdesk",
+    "full": "CSRD IT Helpdesk"
+  },
+  "description": {
+    "short": "Submit and track IT support tickets",
+    "full": "Submit IT support requests and track your tickets directly from Microsoft Teams."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#18181b",
+  "staticTabs": [
+    {
+      "entityId": "myTickets",
+      "name": "My Tickets",
+      "contentUrl": "https://{{DOMAIN}}/teams",
+      "websiteUrl": "https://{{DOMAIN}}/teams",
+      "scopes": ["personal"]
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["{{DOMAIN}}"],
+  "webApplicationInfo": {
+    "id": "{{CLIENT_ID}}",
+    "resource": "api://{{DOMAIN}}/{{CLIENT_ID}}"
+  }
+}

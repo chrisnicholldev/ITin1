@@ -18,6 +18,7 @@ import type { AuthenticatedRequest } from '../../middleware/auth.middleware.js';
 import { env } from '../../config/env.js';
 import { LoginSchema } from '@itdesk/shared';
 import { generateState, getAuthorizationUrl, handleAzureCallback } from './azure-auth.service.js';
+import { handleTeamsSso } from './teams-auth.service.js';
 
 const REFRESH_COOKIE = 'refresh_token';
 
@@ -214,6 +215,20 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
   }
   // Always return 200 — never reveal whether the email exists
   res.json({ message: 'If that email belongs to a local account, a reset link has been sent.' });
+}
+
+/** POST /auth/teams-sso — exchange a Teams SSO token for ITin1 tokens */
+export async function teamsSso(req: Request, res: Response): Promise<void> {
+  const { token } = req.body as { token?: string };
+  if (!token) throw new AppError(400, 'token is required');
+  const { accessToken, refreshToken } = await handleTeamsSso(token);
+  // sameSite:none required — Teams loads the tab in a cross-origin iframe
+  res.cookie(REFRESH_COOKIE, refreshToken, {
+    ...cookieOptions,
+    sameSite: 'none',
+    secure: true,
+  });
+  res.json({ accessToken });
 }
 
 /** POST /auth/reset-password — set a new password using a reset token */

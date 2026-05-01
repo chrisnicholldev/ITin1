@@ -1,4 +1,8 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { TeamsLayout } from '@/pages/teams/TeamsLayout';
+import { TeamsTicketsPage } from '@/pages/teams/TeamsTicketsPage';
+import { TeamsNewTicketPage } from '@/pages/teams/TeamsNewTicketPage';
+import { TeamsTicketDetailPage } from '@/pages/teams/TeamsTicketDetailPage';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { SetupGuard } from '@/components/layout/SetupGuard';
 import { SetupPage } from '@/pages/setup/SetupPage';
@@ -100,6 +104,16 @@ export const router = createBrowserRouter(
       ],
     },
     { path: '/secure/:token', element: <SecureViewPage /> },
+    {
+      path: '/teams',
+      element: <TeamsLayout />,
+      children: [
+        { index: true, element: <Navigate to="/teams/tickets" replace /> },
+        { path: 'tickets', element: <TeamsTicketsPage /> },
+        { path: 'tickets/new', element: <TeamsNewTicketPage /> },
+        { path: 'tickets/:id', element: <TeamsTicketDetailPage /> },
+      ],
+    },
     { path: '*', element: <Navigate to="/" replace /> },
   ],
   { future: { v7_startTransition: true } as any },

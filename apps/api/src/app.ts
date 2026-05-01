@@ -46,7 +46,27 @@ export function createApp(): Express {
   const app = express();
 
   // Security
-  app.use(helmet());
+  // frame-ancestors allows Teams to embed the app in an iframe
+  const TEAMS_FRAME_ANCESTORS = [
+    "'self'",
+    'https://teams.microsoft.com',
+    'https://*.teams.microsoft.com',
+    'https://*.office.com',
+    'https://*.office365.com',
+    'https://*.skype.com',
+  ];
+  app.use(helmet({
+    frameguard: false, // replaced by CSP frame-ancestors below
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        frameAncestors: TEAMS_FRAME_ANCESTORS,
+      },
+    },
+  }));
   app.use(
     cors({
       origin: env.CLIENT_URL || (env.NODE_ENV === 'production' ? false : true),
