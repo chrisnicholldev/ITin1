@@ -6,6 +6,7 @@ import { initJwt } from './config/jwt.js';
 import { ensureSecrets } from './lib/secrets.js';
 import { bootstrapSuperAdmin } from './modules/auth/auth.service.js';
 import { bootstrapCategories } from './modules/categories/category.service.js';
+import { runMigrations } from './lib/migrations.js';
 import { startWorkers, stopWorkers } from './jobs/queues.js';
 import { createApp } from './app.js';
 
@@ -15,6 +16,7 @@ async function main() {
 
   // Init dependencies
   await connectDatabase();
+  await runMigrations();
   await redis.connect();
   await ensureSecrets();
   await initJwt();
