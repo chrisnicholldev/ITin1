@@ -231,4 +231,4 @@ ITin1 is open source under [AGPL-3.0](LICENSE) — free to self-host and modify,
 
 If you need to use ITin1 without AGPL obligations (proprietary or commercial use), a commercial license is available. See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md) or contact **dev@chrisnicholl.com**.
 
-Copyright (C) 2025 Chris Nicholl
+Copyright (C) 2026 Chris Nicholl

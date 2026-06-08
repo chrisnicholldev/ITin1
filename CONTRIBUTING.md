@@ -50,11 +50,13 @@ git clone https://github.com/chrisnicholldev/ITin1.git
 cd ITin1
 ```
 
-### 2. Install dependencies
+### 2. Install dependencies and configure the environment
 
 ```bash
-pnpm install
+./scripts/dev-setup.sh
 ```
+
+This copies `apps/api/.env.example` to `apps/api/.env` and runs `pnpm install`.
 
 ### 3. Start MongoDB and Redis
 
@@ -68,49 +70,28 @@ This starts:
 - MongoDB on `localhost:27018` (username: `root`, password: `devpassword`)
 - Redis on `localhost:6379`
 
-### 4. Configure the API environment
+### 4. Start the development servers
+
+Run each of the following in a separate terminal:
 
 ```bash
-cp apps/api/.env.example apps/api/.env
+# Terminal 1 — already done above (infra)
+
+# Terminal 2
+cd apps/api && pnpm dev
+
+# Terminal 3
+cd apps/web && pnpm dev
 ```
 
-The `.env.example` is pre-configured for the dev compose setup. The only thing you need to add is a JWT key pair.
+> **Do not run `pnpm dev` from the repo root** — Turborepo task ordering causes the API to start before MongoDB is ready.
 
-**Generate JWT keys:**
-
-```bash
-openssl genpkey -algorithm RSA -out /tmp/dev_private.pem -pkeyopt rsa_keygen_bits:2048
-openssl rsa -pubout -in /tmp/dev_private.pem -out /tmp/dev_public.pem
-
-# Format as single-line with \n for the .env file
-awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' /tmp/dev_private.pem
-awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' /tmp/dev_public.pem
-```
-
-Paste the output into `apps/api/.env` as the `JWT_PRIVATE_KEY` and `JWT_PUBLIC_KEY` values (wrapped in double quotes).
-
-**Generate a vault encryption key:**
-
-```bash
-openssl rand -hex 32
-```
-
-Paste the result as `VAULT_ENCRYPTION_KEY` in `apps/api/.env`.
-
-### 5. Start the development servers
-
-```bash
-pnpm dev
-```
-
-This runs the API and web app in parallel with hot reload via Turborepo.
+On first run, the API automatically generates RSA JWT keys and a vault encryption key, saving them to `apps/api/data/secrets.json` (gitignored). No manual key generation is needed.
 
 | Service | URL |
 |---|---|
 | Web | http://localhost:5173 |
 | API | http://localhost:3001 |
-
-On first run, the setup wizard will appear at http://localhost:5173/setup. Complete it to create your admin account.
 
 ---
 

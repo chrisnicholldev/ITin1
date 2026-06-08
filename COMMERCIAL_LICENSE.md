@@ -28,4 +28,4 @@ Support, maintenance, and updates are not included unless separately agreed.
 
 ---
 
-Copyright (C) 2025 Chris Nicholl
+Copyright (C) 2026 Chris Nicholl
