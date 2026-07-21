@@ -12,6 +12,11 @@ async function migrateContactAzureIdIndex(): Promise<void> {
   const db = mongoose.connection.db;
   if (!db) return;
 
+  // Skip on a fresh database where the collection has not been created yet —
+  // listing indexes on a missing namespace throws NamespaceNotFound (code 26).
+  const exists = await db.listCollections({ name: 'contacts' }).hasNext();
+  if (!exists) return;
+
   const collection = db.collection('contacts');
   const indexes = await collection.indexes();
   const staleIndex = indexes.find(
