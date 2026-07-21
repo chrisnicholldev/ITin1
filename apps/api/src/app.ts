@@ -45,6 +45,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export function createApp(): Express {
   const app = express();
 
+  // Behind a single nginx reverse proxy — trust one hop so req.ip and
+  // express-rate-limit key on the real client IP, not the proxy's.
+  app.set('trust proxy', 1);
+
   // Security
   app.use(helmet());
   app.use(
