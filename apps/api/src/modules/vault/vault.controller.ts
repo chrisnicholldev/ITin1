@@ -48,7 +48,8 @@ export async function listCredentials(req: Request, res: Response) {
 }
 
 export async function getCredential(req: Request, res: Response) {
-  const data = await service.getCredential(String(req.params['id']));
+  const { id, role } = (req as AuthenticatedRequest).user;
+  const data = await service.getCredential(String(req.params['id']), { userId: id, role });
   res.json(data);
 }
 

@@ -103,7 +103,7 @@ export async function listCredentials(userId: string, userRole: string, assetId?
   return docs.filter((d) => canAccess(d, userId, userRole)).map(toResponse);
 }
 
-export async function getCredential(id: string) {
+export async function getCredential(id: string, viewer?: { userId: string; role: string }) {
   const doc = await Credential.findById(id)
     .populate('folder', 'name icon colour')
     .populate('linkedAsset', 'name assetTag')
@@ -112,6 +112,10 @@ export async function getCredential(id: string) {
     .populate('createdBy', 'displayName')
     .populate('updatedBy', 'displayName') as ICredentialDocument | null;
   if (!doc) throw new AppError(404, 'Credential not found');
+  // viewer omitted for trusted internal calls (post create/update); enforced for API reads
+  if (viewer && !canAccess(doc, viewer.userId, viewer.role)) {
+    throw new AppError(403, 'Access denied');
+  }
   return toResponse(doc);
 }
 
